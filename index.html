@@ -180,10 +180,11 @@
 <div class="wrap">
   <div class="topbar">
     <h1>👾 BOSS 頻道計時器</h1>
-    <div class="sub">點頻道可多選並開始 45 分鐘倒數；45 分鐘結束後自動循環 5 分鐘倒數</div>
+    <div class="sub">多人同步版：任何人開始或清除計時，其他人的畫面會即時同步</div>
 
     <div class="toolbar">
       <div class="selectedCount" id="selectedCount">已選 0 個頻道</div>
+      <div class="selectedCount" id="connectionStatus">Firebase 連線中…</div>
       <button class="btn45" onclick="start45ForSelected()">開始 45 分鐘</button>
       <button class="btnCancel" onclick="clearSelectedTimers()">清除已選計時</button>
       <button class="btnCancel" onclick="deselectAll()">取消選取</button>
@@ -199,25 +200,48 @@
     2. 按「開始 45 分鐘」後，該頻道會從 45:00 倒數，並顯示開始時間與 45 分鐘後時間。<br>
     3. 45 分鐘結束後會自動開始 05:00 → 00:00 的循環倒數，每 5 分鐘重新開始一次。<br>
     4. 5 分鐘循環會一直持續，直到你再次對該頻道按「開始 45 分鐘」。<br>
-    5. 重新整理頁面後，計時仍會繼續。
+    5. 所有計時資料儲存在 Firebase；大家開同一個網址會看到同一份狀態。
   </div>
 </div>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+import {
+  getDatabase,
+  ref,
+  onValue,
+  update,
+  remove
+} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBBajHIqYG0ENHv-XDDeD_WVYt4hnDpqsw",
+  authDomain: "mogumogu-8c7a9.firebaseapp.com",
+  databaseURL: "https://mogumogu-8c7a9-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "mogumogu-8c7a9",
+  storageBucket: "mogumogu-8c7a9.firebasestorage.app",
+  messagingSenderId: "966047743394",
+  appId: "1:966047743394:web:426b005916a5cf4c3e06fb",
+  measurementId: "G-R40HSKYMBQ"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
 const CHANNELS = 60;
 const MAIN_MS = 45 * 60 * 1000;
 const ZONE_MS = 5 * 60 * 1000;
-const STORAGE_KEY = "boss_timer_v2";
 
-let data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+const channelsRef = ref(db, "bossTimer/channels");
+const serverOffsetRef = ref(db, ".info/serverTimeOffset");
+const connectedRef = ref(db, ".info/connected");
+
+let data = {};
 let selected = new Set();
+let serverTimeOffset = 0;
 
-function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-}
-
-function ensure(ch) {
-  if (!data[ch]) data[ch] = {};
+function serverNow() {
+  return Date.now() + serverTimeOffset;
 }
 
 function buildGrid() {
@@ -228,11 +252,11 @@ function buildGrid() {
     const card = document.createElement("div");
     card.className = "card";
     card.id = `card-${i}`;
-    card.onclick = () => toggleSelect(i);
+    card.addEventListener("click", () => toggleSelect(i));
 
     card.innerHTML = `
       <div class="ch">CH${i}</div>
-      <div class="status" id="status-${i}">--:--</div>
+      <div class="status" id="status-${i}"></div>
       <div class="readyText" id="ready-${i}"></div>
       <div class="subline" id="subline-${i}"></div>
       <div class="zoneMark" id="zone-${i}"></div>
@@ -248,7 +272,8 @@ function toggleSelect(ch) {
 }
 
 function updateSelectionUI() {
-  document.getElementById("selectedCount").textContent = `已選 ${selected.size} 個頻道`;
+  document.getElementById("selectedCount").textContent =
+    `已選 ${selected.size} 個頻道`;
 
   for (let i = 1; i <= CHANNELS; i++) {
     const card = document.getElementById(`card-${i}`);
@@ -256,27 +281,33 @@ function updateSelectionUI() {
   }
 }
 
-function start45ForSelected() {
+async function start45ForSelected() {
   if (selected.size === 0) {
     alert("請先選擇至少一個頻道");
     return;
   }
 
-  const now = Date.now();
+  const now = serverNow();
+  const updates = {};
+
   selected.forEach(ch => {
-    ensure(ch);
-    data[ch].mainStart = now;
-    data[ch].mainEnd = now + MAIN_MS;
+    updates[`CH${ch}`] = {
+      mainStart: now,
+      mainEnd: now + MAIN_MS
+    };
   });
 
-  save();
-  render();
-
-  selected.clear();
-  updateSelectionUI();
+  try {
+    await update(channelsRef, updates);
+    selected.clear();
+    updateSelectionUI();
+  } catch (err) {
+    console.error(err);
+    alert("寫入 Firebase 失敗，請確認 Realtime Database 規則允許寫入。");
+  }
 }
 
-function clearSelectedTimers() {
+async function clearSelectedTimers() {
   if (selected.size === 0) {
     alert("請先選擇至少一個頻道");
     return;
@@ -284,12 +315,19 @@ function clearSelectedTimers() {
 
   if (!confirm(`確定清除已選 ${selected.size} 個頻道的計時嗎？`)) return;
 
+  const updates = {};
   selected.forEach(ch => {
-    delete data[ch];
+    updates[`CH${ch}`] = null;
   });
 
-  save();
-  render();
+  try {
+    await update(channelsRef, updates);
+    selected.clear();
+    updateSelectionUI();
+  } catch (err) {
+    console.error(err);
+    alert("清除失敗，請確認 Firebase 規則。");
+  }
 }
 
 function deselectAll() {
@@ -297,14 +335,17 @@ function deselectAll() {
   updateSelectionUI();
 }
 
-function clearAll() {
+async function clearAll() {
   if (!confirm("確定要清除全部頻道紀錄嗎？")) return;
 
-  data = {};
-  selected.clear();
-  localStorage.removeItem(STORAGE_KEY);
-  updateSelectionUI();
-  render();
+  try {
+    await remove(channelsRef);
+    selected.clear();
+    updateSelectionUI();
+  } catch (err) {
+    console.error(err);
+    alert("全部清除失敗，請確認 Firebase 規則。");
+  }
 }
 
 function formatCountdown(ms) {
@@ -324,7 +365,7 @@ function formatTime(ts) {
 }
 
 function render() {
-  const now = Date.now();
+  const now = serverNow();
 
   for (let ch = 1; ch <= CHANNELS; ch++) {
     const card = document.getElementById(`card-${ch}`);
@@ -332,7 +373,7 @@ function render() {
     const ready = document.getElementById(`ready-${ch}`);
     const subline = document.getElementById(`subline-${ch}`);
     const zone = document.getElementById(`zone-${ch}`);
-    const item = data[ch] || {};
+    const item = data[`CH${ch}`] || {};
 
     card.classList.remove("counting", "finished", "zoneonly");
     ready.textContent = "";
@@ -346,6 +387,7 @@ function render() {
 
     const mainRemain = item.mainEnd - now;
 
+    // 第一階段：固定 45 分鐘倒數
     if (mainRemain > 0) {
       status.textContent = formatCountdown(mainRemain);
       subline.innerHTML =
@@ -355,12 +397,17 @@ function render() {
       continue;
     }
 
-    // 45 分鐘結束後，自動進入每 5 分鐘循環倒數。
+    // 第二階段：45 分鐘結束後，自動每 5 分鐘循環
     // 05:00 → 00:00 → 05:00 → 00:00 ...
-    // 直到這個頻道再次開始新的 45 分鐘倒數。
-    const elapsedAfter45 = now - item.mainEnd;
+    // 直到這個頻道再次開始新的 45 分鐘。
+    const elapsedAfter45 = Math.max(0, now - item.mainEnd);
     const cycleElapsed = elapsedAfter45 % ZONE_MS;
-    const cycleRemain = ZONE_MS - cycleElapsed;
+    let cycleRemain = ZONE_MS - cycleElapsed;
+
+    if (cycleRemain <= 0 || cycleRemain > ZONE_MS) {
+      cycleRemain = ZONE_MS;
+    }
+
     const cycleNumber = Math.floor(elapsedAfter45 / ZONE_MS) + 1;
 
     status.textContent = formatCountdown(cycleRemain);
@@ -375,9 +422,43 @@ function render() {
   updateSelectionUI();
 }
 
+// Firebase 使用伺服器時間偏移，避免不同玩家電腦時間略有差異。
+onValue(serverOffsetRef, snapshot => {
+  serverTimeOffset = snapshot.val() || 0;
+  render();
+});
+
+// 顯示 Firebase 連線狀態。
+onValue(connectedRef, snapshot => {
+  const el = document.getElementById("connectionStatus");
+  if (snapshot.val() === true) {
+    el.textContent = "● 已同步";
+    el.style.color = "#54dc9b";
+  } else {
+    el.textContent = "● 連線中…";
+    el.style.color = "#f6a432";
+  }
+});
+
+// 只要任何人更改 Firebase，所有開著網頁的人都會立即收到。
+onValue(channelsRef, snapshot => {
+  data = snapshot.val() || {};
+  render();
+});
+
+document.querySelector(".btn45").addEventListener("click", start45ForSelected);
+document.querySelectorAll(".btnCancel")[0].addEventListener("click", clearSelectedTimers);
+document.querySelectorAll(".btnCancel")[1].addEventListener("click", deselectAll);
+document.querySelector(".btnClear").addEventListener("click", clearAll);
+
+// 移除原 HTML inline onclick，避免重複觸發。
+document.querySelector(".btn45").removeAttribute("onclick");
+document.querySelectorAll(".btnCancel").forEach(btn => btn.removeAttribute("onclick"));
+document.querySelector(".btnClear").removeAttribute("onclick");
+
 buildGrid();
-render();
 updateSelectionUI();
+render();
 setInterval(render, 1000);
 </script>
 </body>
