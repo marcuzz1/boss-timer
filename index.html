@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOSS 45分＋5分循環計時器</title>
+<style>
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: #0f1720;
+    color: #eaf2f8;
+    font-family: Arial, "Microsoft JhengHei", sans-serif;
+  }
+
+  .wrap {
+    width: min(1180px, 96%);
+    margin: 20px auto 36px;
+  }
+
+  .topbar {
+    background: #18212b;
+    border: 1px solid #273442;
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+
+  h1 {
+    margin: 0 0 8px;
+    text-align: center;
+    font-size: 28px;
+  }
+
+  .sub {
+    text-align: center;
+    color: #9baab6;
+    margin-bottom: 12px;
+    font-size: 14px;
+  }
+
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .selectedCount {
+    color: #d9e3ea;
+    font-weight: 700;
+    min-width: 110px;
+    text-align: center;
+  }
+
+  button {
+    border: none;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-weight: 800;
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  .btn45 { background: #4d84ff; color: white; }
+  .btn5  { background: #f6a432; color: #131313; }
+  .btnCancel { background: #50606f; color: white; }
+  .btnClear { background: #d84e4e; color: white; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .card {
+    position: relative;
+    min-height: 72px;
+    background: #131d27;
+    border: 1px solid #263340;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: 0.15s ease;
+    padding: 8px 6px 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    user-select: none;
+  }
+
+  .card:hover {
+    transform: translateY(-1px);
+    border-color: #3d5265;
+  }
+
+  .card.selected {
+    border: 2px solid #f0ad2e;
+    box-shadow: inset 0 0 0 1px rgba(240,173,46,0.25);
+  }
+
+  .card.finished {
+    border-color: #2ebd7f;
+    background: #13252a;
+    box-shadow: inset 0 0 0 1px rgba(46,189,127,0.18);
+  }
+
+  .card.counting {
+    border-color: #2fcd88;
+    background: #15202a;
+  }
+
+  .card.zoneonly {
+    border-color: #d8902e;
+  }
+
+  .ch {
+    font-size: 19px;
+    font-weight: 900;
+    line-height: 1.05;
+    color: #f4fbff;
+    margin-bottom: 3px;
+  }
+
+  .status {
+    font-size: 18px;
+    font-weight: 900;
+    font-family: Consolas, monospace;
+    line-height: 1.05;
+    color: #dce7ef;
+  }
+
+  .readyText {
+    font-size: 13px;
+    font-weight: 900;
+    color: #2fcd88;
+    margin-top: 2px;
+  }
+
+  .subline {
+    margin-top: 3px;
+    font-size: 10px;
+    line-height: 1.35;
+    color: #80909d;
+    text-align: center;
+  }
+
+  .zoneMark {
+    margin-top: 2px;
+    font-size: 10px;
+    font-weight: 800;
+    color: #f6a432;
+  }
+
+  .legend {
+    margin-top: 14px;
+    background: #18212b;
+    border: 1px solid #273442;
+    border-radius: 12px;
+    padding: 12px 14px;
+    color: #aebbc6;
+    line-height: 1.75;
+    font-size: 13px;
+  }
+
+  @media (max-width: 980px) {
+    .grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  }
+
+  @media (max-width: 650px) {
+    .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .ch { font-size: 17px; }
+    .status { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <h1>👾 BOSS 頻道計時器</h1>
+    <div class="sub">點頻道可多選並開始 45 分鐘倒數；45 分鐘結束後自動循環 5 分鐘倒數</div>
+
+    <div class="toolbar">
+      <div class="selectedCount" id="selectedCount">已選 0 個頻道</div>
+      <button class="btn45" onclick="start45ForSelected()">開始 45 分鐘</button>
+      <button class="btnCancel" onclick="clearSelectedTimers()">清除已選計時</button>
+      <button class="btnCancel" onclick="deselectAll()">取消選取</button>
+      <button class="btnClear" onclick="clearAll()">全部清除</button>
+    </div>
+  </div>
+
+  <div id="grid" class="grid"></div>
+
+  <div class="legend">
+    使用方式：<br>
+    1. 先點 CH1～CH60，可一次選多個頻道。<br>
+    2. 按「開始 45 分鐘」後，該頻道會從 45:00 倒數，並顯示開始時間與 45 分鐘後時間。<br>
+    3. 45 分鐘結束後會自動開始 05:00 → 00:00 的循環倒數，每 5 分鐘重新開始一次。<br>
+    4. 5 分鐘循環會一直持續，直到你再次對該頻道按「開始 45 分鐘」。<br>
+    5. 重新整理頁面後，計時仍會繼續。
+  </div>
+</div>
+
+<script>
+const CHANNELS = 60;
+const MAIN_MS = 45 * 60 * 1000;
+const ZONE_MS = 5 * 60 * 1000;
+const STORAGE_KEY = "boss_timer_v2";
+
+let data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+let selected = new Set();
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function ensure(ch) {
+  if (!data[ch]) data[ch] = {};
+}
+
+function buildGrid() {
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+
+  for (let i = 1; i <= CHANNELS; i++) {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.id = `card-${i}`;
+    card.onclick = () => toggleSelect(i);
+
+    card.innerHTML = `
+      <div class="ch">CH${i}</div>
+      <div class="status" id="status-${i}">--:--</div>
+      <div class="readyText" id="ready-${i}"></div>
+      <div class="subline" id="subline-${i}"></div>
+      <div class="zoneMark" id="zone-${i}"></div>
+    `;
+    grid.appendChild(card);
+  }
+}
+
+function toggleSelect(ch) {
+  if (selected.has(ch)) selected.delete(ch);
+  else selected.add(ch);
+  updateSelectionUI();
+}
+
+function updateSelectionUI() {
+  document.getElementById("selectedCount").textContent = `已選 ${selected.size} 個頻道`;
+
+  for (let i = 1; i <= CHANNELS; i++) {
+    const card = document.getElementById(`card-${i}`);
+    card.classList.toggle("selected", selected.has(i));
+  }
+}
+
+function start45ForSelected() {
+  if (selected.size === 0) {
+    alert("請先選擇至少一個頻道");
+    return;
+  }
+
+  const now = Date.now();
+  selected.forEach(ch => {
+    ensure(ch);
+    data[ch].mainStart = now;
+    data[ch].mainEnd = now + MAIN_MS;
+  });
+
+  save();
+  render();
+
+  selected.clear();
+  updateSelectionUI();
+}
+
+function clearSelectedTimers() {
+  if (selected.size === 0) {
+    alert("請先選擇至少一個頻道");
+    return;
+  }
+
+  if (!confirm(`確定清除已選 ${selected.size} 個頻道的計時嗎？`)) return;
+
+  selected.forEach(ch => {
+    delete data[ch];
+  });
+
+  save();
+  render();
+}
+
+function deselectAll() {
+  selected.clear();
+  updateSelectionUI();
+}
+
+function clearAll() {
+  if (!confirm("確定要清除全部頻道紀錄嗎？")) return;
+
+  data = {};
+  selected.clear();
+  localStorage.removeItem(STORAGE_KEY);
+  updateSelectionUI();
+  render();
+}
+
+function formatCountdown(ms) {
+  if (ms <= 0) return "00:00";
+  const totalSec = Math.ceil(ms / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+}
+
+function formatTime(ts) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  const h = String(d.getHours()).padStart(2, "0");
+  const m = String(d.getMinutes()).padStart(2, "0");
+  return `${h}:${m}`;
+}
+
+function render() {
+  const now = Date.now();
+
+  for (let ch = 1; ch <= CHANNELS; ch++) {
+    const card = document.getElementById(`card-${ch}`);
+    const status = document.getElementById(`status-${ch}`);
+    const ready = document.getElementById(`ready-${ch}`);
+    const subline = document.getElementById(`subline-${ch}`);
+    const zone = document.getElementById(`zone-${ch}`);
+    const item = data[ch] || {};
+
+    card.classList.remove("counting", "finished", "zoneonly");
+    ready.textContent = "";
+    subline.textContent = "";
+    zone.textContent = "";
+
+    if (!item.mainEnd) {
+      status.textContent = "";
+      continue;
+    }
+
+    const mainRemain = item.mainEnd - now;
+
+    if (mainRemain > 0) {
+      status.textContent = formatCountdown(mainRemain);
+      subline.innerHTML =
+        `開始 ${formatTime(item.mainStart)}<br>` +
+        `45分後 ${formatTime(item.mainEnd)}`;
+      card.classList.add("counting");
+      continue;
+    }
+
+    // 45 分鐘結束後，自動進入每 5 分鐘循環倒數。
+    // 05:00 → 00:00 → 05:00 → 00:00 ...
+    // 直到這個頻道再次開始新的 45 分鐘倒數。
+    const elapsedAfter45 = now - item.mainEnd;
+    const cycleElapsed = elapsedAfter45 % ZONE_MS;
+    const cycleRemain = ZONE_MS - cycleElapsed;
+    const cycleNumber = Math.floor(elapsedAfter45 / ZONE_MS) + 1;
+
+    status.textContent = formatCountdown(cycleRemain);
+    ready.textContent = "重生區間";
+    subline.innerHTML =
+      `開始 ${formatTime(item.mainStart)}<br>` +
+      `45分到 ${formatTime(item.mainEnd)}`;
+    zone.textContent = `第 ${cycleNumber} 個 5 分鐘區間`;
+    card.classList.add("finished");
+  }
+
+  updateSelectionUI();
+}
+
+buildGrid();
+render();
+updateSelectionUI();
+setInterval(render, 1000);
+</script>
+</body>
+</html>
