@@ -67,6 +67,7 @@
   .btn45 { background: #4d84ff; color: white; }
   .btn5  { background: #f6a432; color: #131313; }
   .btnCancel { background: #50606f; color: white; }
+  .btnSort { background: #50606f; color: white; }
   .btnClear { background: #d84e4e; color: white; }
 
   .grid {
@@ -175,11 +176,11 @@
     <div class="toolbar">
       <div class="selectedCount" id="selectedCount">已選 0 個頻道</div>
       <div class="selectedCount" id="connectionStatus">Firebase 連線中…</div>
-      <button class="btnCancel" id="sortBtn" type="button">依剩餘時間排序</button>
-      <button class="btn45" onclick="start45ForSelected()">開始 40 分鐘</button>
-      <button class="btnCancel" onclick="clearSelectedTimers()">清除已選計時</button>
-      <button class="btnCancel" onclick="deselectAll()">取消選取</button>
-      <button class="btnClear" onclick="clearAll()">全部清除</button>
+      <button class="btnSort" id="sortBtn" type="button">依剩餘時間排序</button>
+      <button class="btn45" id="start40Btn" type="button">開始 40 分鐘</button>
+      <button class="btnCancel" id="clearSelectedBtn">清除已選計時</button>
+      <button class="btnCancel" id="deselectBtn">取消選取</button>
+      <button class="btnClear" id="clearAllBtn" type="button">全部清除</button>
     </div>
   </div>
 
@@ -484,15 +485,10 @@ document.getElementById("sortBtn").addEventListener("click", () => {
   render();
 });
 
-document.querySelector(".btn45").addEventListener("click", start45ForSelected);
-document.querySelectorAll(".btnCancel")[0].addEventListener("click", clearSelectedTimers);
-document.querySelectorAll(".btnCancel")[1].addEventListener("click", deselectAll);
-document.querySelector(".btnClear").addEventListener("click", clearAll);
-
-// 移除原 HTML inline onclick，避免重複觸發。
-document.querySelector(".btn45").removeAttribute("onclick");
-document.querySelectorAll(".btnCancel").forEach(btn => btn.removeAttribute("onclick"));
-document.querySelector(".btnClear").removeAttribute("onclick");
+document.getElementById("start40Btn").addEventListener("click", start45ForSelected);
+document.getElementById("clearSelectedBtn").addEventListener("click", clearSelectedTimers);
+document.getElementById("deselectBtn").addEventListener("click", deselectAll);
+document.getElementById("clearAllBtn").addEventListener("click", clearAll);
 
 buildGrid();
 updateSelectionUI();
