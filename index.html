@@ -156,6 +156,33 @@
   }
 
 
+
+  .chatPanel {
+    margin-top: 16px;
+    background: #18212b;
+    border: 1px solid #273442;
+    border-radius: 10px;
+    padding: 12px;
+  }
+  .chatTitle { font-size: 16px; font-weight: 900; margin-bottom: 10px; }
+  .chatMessages {
+    height: 220px; overflow-y: auto; background: #111923;
+    border: 1px solid #26333f; border-radius: 8px; padding: 10px;
+  }
+  .chatMsg { padding: 6px 0; border-bottom: 1px solid #202c37; line-height: 1.45; word-break: break-word; }
+  .chatMsg:last-child { border-bottom: none; }
+  .chatMeta { font-size: 11px; color: #83919d; margin-bottom: 2px; }
+  .chatName { color: #6fb1ff; font-weight: 800; }
+  .chatText { font-size: 14px; color: #e6edf3; }
+  .chatForm { display: grid; grid-template-columns: 130px 1fr auto; gap: 8px; margin-top: 10px; }
+  .chatForm input {
+    min-width: 0; width: 100%; border: 1px solid #334250; background: #111923;
+    color: white; border-radius: 7px; padding: 10px 11px; font-size: 14px; outline: none;
+  }
+  .chatForm input:focus { border-color: #5d8cff; }
+  .chatSend { background: #4d84ff; color: white; }
+  @media (max-width: 650px) { .chatForm { grid-template-columns: 1fr; } }
+
   @media (max-width: 980px) {
     .grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   }
@@ -186,6 +213,19 @@
 
   <div id="grid" class="grid"></div>
 
+  <div class="chatPanel">
+    <div class="chatTitle">💬 頻道聊天室</div>
+    <div id="chatMessages" class="chatMessages">
+      <div class="chatMeta">聊天室連線中…</div>
+    </div>
+    <form id="chatForm" class="chatForm">
+      <input id="chatName" type="text" maxlength="16" placeholder="暱稱">
+      <input id="chatInput" type="text" maxlength="120" placeholder="輸入訊息…">
+      <button class="chatSend" type="submit">送出</button>
+    </form>
+  </div>
+
+
 </div>
 
 <script type="module">
@@ -195,7 +235,10 @@ import {
   ref,
   onValue,
   update,
-  remove
+  remove,
+  push,
+  query,
+  limitToLast
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -217,6 +260,7 @@ const MAIN_MS = 40 * 60 * 1000;
 const ZONE_MS = 5 * 60 * 1000;
 
 const channelsRef = ref(db, "bossTimer/channels");
+const chatRef = ref(db, "bossTimer/chat");
 const serverOffsetRef = ref(db, ".info/serverTimeOffset");
 const connectedRef = ref(db, ".info/connected");
 
@@ -453,6 +497,73 @@ function render() {
   reorderCards(now);
   updateSelectionUI();
 }
+
+
+function escapeHtml(text) {
+  return String(text)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function formatChatTime(ts) {
+  const d = new Date(ts || serverNow());
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+const chatQuery = query(chatRef, limitToLast(80));
+
+onValue(chatQuery, snapshot => {
+  const box = document.getElementById("chatMessages");
+  const messages = [];
+
+  snapshot.forEach(child => {
+    messages.push(child.val() || {});
+  });
+
+  if (messages.length === 0) {
+    box.innerHTML = '<div class="chatMeta">目前還沒有訊息</div>';
+    return;
+  }
+
+  box.innerHTML = messages.map(msg => `
+    <div class="chatMsg">
+      <div class="chatMeta">
+        <span class="chatName">${escapeHtml(msg.name || "匿名")}</span>
+        ・${formatChatTime(msg.time)}
+      </div>
+      <div class="chatText">${escapeHtml(msg.text || "")}</div>
+    </div>
+  `).join("");
+
+  box.scrollTop = box.scrollHeight;
+});
+
+document.getElementById("chatForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const nameEl = document.getElementById("chatName");
+  const inputEl = document.getElementById("chatInput");
+
+  const name = nameEl.value.trim() || "匿名";
+  const text = inputEl.value.trim();
+  if (!text) return;
+
+  try {
+    await push(chatRef, {
+      name: name.slice(0, 16),
+      text: text.slice(0, 120),
+      time: serverNow()
+    });
+    inputEl.value = "";
+    inputEl.focus();
+  } catch (err) {
+    console.error(err);
+    alert("訊息送出失敗，請確認 Firebase 規則允許寫入。");
+  }
+});
 
 // Firebase 使用伺服器時間偏移，避免不同玩家電腦時間略有差異。
 onValue(serverOffsetRef, snapshot => {
