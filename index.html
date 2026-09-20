@@ -480,7 +480,7 @@ function checkAlarms(now) {
     if (!it || !bossByKey[it.boss]) continue;
     const tag = `${id}:${it.killTime}`, past = now >= windowOf(it).earliest;
     if (!knownKill.has(tag)) { knownKill.add(tag); if (past) alerted.add(tag); }
-    if (past && !alerted.has(tag)) { alerted.add(tag); playAlarm(); }
+    if (past && !alerted.has(tag)) { alerted.add(tag); if (it.boss === currentBoss) playAlarm(); }
   }
 }
 

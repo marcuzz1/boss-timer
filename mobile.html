@@ -293,7 +293,7 @@ function ensureAudio(){ if(!audioCtx){const AC=window.AudioContext||window.webki
 function synthAlarm(){ ensureAudio(); if(!audioCtx) return; const ctx=audioCtx,t0=ctx.currentTime; [[880,0,.16],[1245,.16,.16],[1046,.34,.16],[1568,.52,.45]].forEach(([f,st,du])=>{ const o=ctx.createOscillator(),g=ctx.createGain(); o.type="triangle"; o.frequency.setValueAtTime(f,t0+st); o.frequency.linearRampToValueAtTime(f*1.05,t0+st+du); o.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(0,t0+st); g.gain.linearRampToValueAtTime(.25,t0+st+.02); g.gain.exponentialRampToValueAtTime(.001,t0+st+du); o.start(t0+st); o.stop(t0+st+du+.03); }); }
 function playAlarm(){ if(!soundOn) return; if(customOk){ customAudio.currentTime=0; const p=customAudio.play(); if(p) p.catch(()=>synthAlarm()); setTimeout(()=>{try{customAudio.pause();}catch(e){}},1000);} else synthAlarm(); }
 const knownKill=new Set(), alerted=new Set();
-function checkAlarms(now){ for(const [id,it] of Object.entries(kills)){ if(!it||!bossByKey[it.boss]) continue; const tag=`${id}:${it.killTime}`, past=now>=windowOf(it).earliest; if(!knownKill.has(tag)){knownKill.add(tag); if(past) alerted.add(tag);} if(past&&!alerted.has(tag)){alerted.add(tag); playAlarm();} } }
+function checkAlarms(now){ for(const [id,it] of Object.entries(kills)){ if(!it||!bossByKey[it.boss]) continue; const tag=`${id}:${it.killTime}`, past=now>=windowOf(it).earliest; if(!knownKill.has(tag)){knownKill.add(tag); if(past) alerted.add(tag);} if(past&&!alerted.has(tag)){alerted.add(tag); if(it.boss===currentBoss) playAlarm();} } }
 
 /* build */
 function buildPicker(){
