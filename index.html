@@ -173,16 +173,16 @@
 
   /* ---------- patrol ---------- */
   .patrolwrap { flex: 1; min-height: 0; }
-  .patrol { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+  .patrol { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
   .prow {
-    display: grid; grid-template-columns: auto 1fr auto auto; gap: 8px; align-items: center;
-    background: var(--night2); border: 2px solid var(--edge); border-radius: 7px; padding: 7px 8px;
+    display: grid; grid-template-columns: auto auto 1fr auto; gap: 14px; align-items: center;
+    background: var(--night2); border: 2px solid var(--edge); border-radius: 10px; padding: 14px 16px;
   }
   .prow .psprite { width: 30px; height: 30px; object-fit: contain; }
   .prow .pemoji { font-size: 22px; }
-  .prow .pnm { font-weight: 700; font-size: 13px; }
-  .prow .pwhere { color: var(--grape); font-size: 12px; }
-  .prow .pcd { font-size: 16px; color: var(--cream); }
+  .prow .pnm { font-weight: 800; font-size: 22px; }
+  .prow .pwhere { color: var(--grape); font-size: 17px; }
+  .prow .pcd { font-size: 30px; color: var(--cream); }
   .prow.soon { border-color: var(--gold); } .prow.soon .pcd { color: var(--gold); }
   .prow.window { border-color: var(--violet); } .prow.window .pcd { color: var(--violet); }
   .prow.overdue { border-color: var(--ember); } .prow.overdue .pcd { color: var(--ember); }
@@ -210,7 +210,7 @@
   .pghead .pgemoji { font-size: 18px; line-height: 24px; }
   .pghead .pgname { font-weight: 900; font-size: 13px; }
   .pghead .pgtally { margin-left: auto; font-size: 11px; color: var(--grape); font-weight: 700; }
-  .pkill { background: var(--leaf); color: #06210f; border: 2px solid var(--edge); border-radius: 6px; padding: 5px 9px; font-size: 12px; font-weight: 700; box-shadow: 0 2px 0 var(--edge); }
+  .pkill { background: var(--leaf); color: #06210f; border: 2px solid var(--edge); border-radius: 8px; padding: 12px 16px; font-size: 17px; font-weight: 800; box-shadow: 0 3px 0 var(--edge); }
   .pkill:active { transform: translateY(2px); box-shadow: 0 0 0 var(--edge); }
 
   /* message board */
@@ -347,6 +347,7 @@
           <input id="boardInput" type="text" maxlength="120" placeholder="輸入留言…" aria-label="留言內容">
           <button class="btn-go" type="submit">送出</button>
         </form>
+        <div id="boardStatus" style="font-size:11px;color:var(--grape);margin-top:6px;min-height:14px;"></div>
       </section>
     </div>
   </div>
@@ -399,6 +400,7 @@ let serverTimeOffset = 0;
 let currentBoss = BOSSES[0].key;
 let kills = {};
 let selectedCh = null;
+let connected = false;
 
 const $ = id => document.getElementById(id);
 const serverNow = () => Date.now() + serverTimeOffset;
@@ -520,6 +522,7 @@ function setCurrentBoss(key) {
   $("trackRt").textContent = rtLabel(b);
   updateEstimate();
   renderGrid();
+  renderPatrol(serverNow());
 }
 function updateEstimate() {
   const b = bossByKey[currentBoss], now = serverNow(), est = $("estimate");
@@ -593,15 +596,21 @@ function renderGrid() {
     cd.textContent = st === "idle" ? "" : remainText(item, now);
   }
   BOSSES.forEach(b => {
-    let c = 0; for (let i = 1; i <= CHANNELS; i++) if (kills[killId(b.key, i)]) c++;
-    const el = $(`live-${b.key}`); if (el) el.textContent = c ? `${c} 台在追` : "";
+    let tracked = 0, urgent = 0;
+    for (let i = 1; i <= CHANNELS; i++) {
+      const it = kills[killId(b.key, i)];
+      if (it) { tracked++; const st = stateOf(it, now); if (st === "overdue" || st === "window" || st === "soon") urgent++; }
+    }
+    const el = $(`live-${b.key}`);
+    if (el) el.innerHTML = urgent ? `<span style="color:var(--ember)">⚠ ${urgent} 要打</span>` : (tracked ? `${tracked} 台在追` : "");
   });
 }
 function renderPatrol(now) {
-  const items = sortedRows(now).filter(it => it.st === "overdue" || it.st === "window" || it.st === "soon");
-  $("patrolCount").textContent = `${items.length} 個`;
+  const b0 = bossByKey[currentBoss];
+  const items = sortedRows(now).filter(it => it.boss === currentBoss && (it.st === "overdue" || it.st === "window" || it.st === "soon"));
+  $("patrolCount").textContent = `${b0.name}・${items.length} 個`;
   const box = $("patrol");
-  if (!items.length) { box.innerHTML = '<div class="empty">還沒有快出現的王。<br>倒數剩 5 分鐘內的王會排到這裡。</div>'; return; }
+  if (!items.length) { box.innerHTML = `<div class="empty">「${escapeHtml(b0.name)}」目前沒有快出現的頻道。<br>點上方其他王可切換巡查。</div>`; return; }
 
   const groups = new Map();
   items.forEach(it => { if (!groups.has(it.boss)) groups.set(it.boss, []); groups.get(it.boss).push(it); });
@@ -615,10 +624,10 @@ function renderPatrol(now) {
       ? `<img class="pgsprite" src="${b.img}" alt="${escapeHtml(b.name)}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pgemoji',textContent:'${b.emoji}'}))">`
       : `<span class="pgemoji">${b.emoji}</span>`;
     const rows = arr.map(it => `<div class="prow ${it.st}">
+        <button class="pkill" data-boss="${it.boss}" data-ch="${it.ch}">⚔ 擊殺</button>
         <div class="pnm pix">CH${it.ch}</div>
         <div class="pwhere">${escapeHtml(it.killer || "匿名")} 擊殺</div>
         <div class="pcd pix">${remainText(it, now)}</div>
-        <button class="pkill" data-boss="${it.boss}" data-ch="${it.ch}">擊殺</button>
       </div>`).join("");
     return `<div class="pgroup">
       <div class="pghead">${sprite}<span class="pgname">${escapeHtml(b.name)}</span><span class="pgtally">${arr.length} 個頻道</span></div>
@@ -658,9 +667,15 @@ function tick() {
 
 onValue(serverOffsetRef, s => { serverTimeOffset = s.val() || 0; });
 onValue(connectedRef, s => {
+  connected = s.val() === true;
   const el = $("conn");
-  if (s.val() === true) { el.textContent = "● 已連線"; el.classList.add("on"); }
+  if (connected) { el.textContent = "● 已連線"; el.classList.add("on"); }
   else { el.textContent = "● 連線中…"; el.classList.remove("on"); }
+  const bs = $("boardStatus");
+  if (bs) {
+    if (!connected) bs.innerHTML = '<span style="color:var(--ember)">⚠ 尚未連線 Firebase,留言可能送不出去。請重新整理或換個網路/關掉廣告攔截。</span>';
+    else if (bs.textContent.includes("尚未連線")) bs.textContent = "";
+  }
 });
 onValue(killsRef, s => { kills = s.val() || {}; const now = serverNow(); renderHero(now); renderGrid(); renderPatrol(now); renderRecords(now); });
 
@@ -683,12 +698,21 @@ $("boardForm").addEventListener("submit", async e => {
   const text = input.value.trim();
   if (!text) return;
   const name = ($("boardName").value.trim() || $("nick").value.trim() || "匿名").slice(0, 16);
-  // 記住 ID,並同步到上方暱稱
   localStorage.setItem("bt_nick", name);
   $("nick").value = name;
-  if ($("boardName").value.trim()) $("boardName").value = name;
-  try { await push(boardRef, { name, text: text.slice(0, 120), time: serverNow() }); input.value = ""; input.focus(); }
-  catch (err) { console.error(err); alert("留言沒送出去。檢查一下 Firebase 規則有沒有開放寫入。"); }
+  const status = $("boardStatus");
+  if (!connected) { status.innerHTML = '<span style="color:var(--ember)">⚠ 尚未連線,無法送出。請重新整理或換網路。</span>'; return; }
+  status.textContent = "送出中…";
+  input.value = "";
+  try {
+    await push(boardRef, { name, text: text.slice(0, 120), time: serverNow() });
+    status.textContent = "";
+    input.focus();
+  } catch (err) {
+    console.error("board push failed:", err);
+    input.value = text;
+    status.innerHTML = `<span style="color:var(--ember)">送出失敗：${escapeHtml((err && err.message) || String(err))}</span>`;
+  }
 });
 
 /* ---------- events ---------- */
