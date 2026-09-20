@@ -469,6 +469,7 @@ let kills = {};
 let selectedCh = null;
 let connected = false;
 let recFilter = "all";
+let lastHeroSig = "", lastPatrolSig = "";
 
 const $ = id => document.getElementById(id);
 const serverNow = () => Date.now() + serverTimeOffset;
@@ -553,6 +554,36 @@ function checkAlarms(now) {
     if (past && !alerted.has(tag)) { alerted.add(tag); if (it.boss === currentBoss) playAlarm(); }
   }
 }
+// 活潑的「準備」提示音（跟已重生音效不同）
+function playReady() {
+  if (!soundOn) return;
+  ensureAudio(); if (!audioCtx) return;
+  const ctx = audioCtx, t0 = ctx.currentTime;
+  const seq = [[523,0,.12],[659,.12,.12],[784,.24,.12],[1047,.36,.18],[880,.58,.1],[1047,.70,.1],[1319,.82,.32]];
+  seq.forEach(([f, st, du]) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "square"; o.frequency.setValueAtTime(f, t0 + st);
+    o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0, t0 + st);
+    g.gain.linearRampToValueAtTime(.16, t0 + st + .02);
+    g.gain.exponentialRampToValueAtTime(.001, t0 + st + du);
+    o.start(t0 + st); o.stop(t0 + st + du + .03);
+  });
+}
+// 一輪結束(巡查清空)後,新頻道進巡查 → 於重生前 3 分鐘提醒準備
+let roundWasEmpty = null, roundRemindAt = null;
+function checkRoundReminder(now) {
+  const items = sortedRows(now).filter(it => it.boss === currentBoss && (it.st === "overdue" || it.st === "window" || it.st === "soon"));
+  const empty = items.length === 0;
+  if (roundWasEmpty === null) { roundWasEmpty = empty; }
+  else if (roundWasEmpty && !empty) {
+    const soonest = Math.min(...items.map(it => it.earliest));
+    const t = soonest - 3 * MIN;            // 重生前 3 分鐘
+    roundRemindAt = (t > now + 1000) ? t : null;
+  }
+  roundWasEmpty = empty;
+  if (roundRemindAt !== null && now >= roundRemindAt) { roundRemindAt = null; playReady(); }
+}
 
 /* ---------- build ---------- */
 function buildPicker() {
@@ -601,6 +632,7 @@ function setCurrentBoss(key) {
   renderGrid();
   renderPatrol(serverNow());
   renderHero(serverNow());
+  roundWasEmpty = null; roundRemindAt = null;   // 換王時重新判斷輪次
 }
 function updateEstimate() {
   const b = bossByKey[currentBoss], now = serverNow(), est = $("estimate");
@@ -677,6 +709,12 @@ function renderHero(now) {
   const hero = $("hero");
   const b0 = bossByKey[currentBoss];
   const next = sortedRows(now).find(it => it.boss === currentBoss);
+  const sig = next ? `${next.boss}|${next.ch}|${next.st}|${next.killTime}` : "none";
+  if (sig === lastHeroSig) {
+    if (next) { const cd = hero.querySelector(".hero-count"); if (cd) cd.textContent = remainText(next, now); }
+    return;
+  }
+  lastHeroSig = sig;
   hero.classList.remove("is-overdue", "is-window");
   if (!next) {
     hero.innerHTML = `<div class="hero-empty" id="heroEmpty">「${escapeHtml(b0.name)}」目前沒有紀錄。在下面記一筆,這裡就會顯示下一隻在哪。</div>`;
@@ -724,6 +762,12 @@ function renderPatrol(now) {
   const items = sortedRows(now).filter(it => it.boss === currentBoss && (it.st === "overdue" || it.st === "window" || it.st === "soon"));
   $("patrolCount").textContent = `${b0.name}・${items.length} 個`;
   const box = patrolBox;
+  const sig = currentBoss + "|" + items.map(it => `${it.ch}:${it.st}:${it.killTime}`).join(",");
+  if (sig === lastPatrolSig) {
+    items.forEach(it => { const c = box.querySelector(`[data-cd="${it.boss}_${it.ch}"]`); if (c) c.textContent = remainText(it, now); });
+    return;
+  }
+  lastPatrolSig = sig;
   if (!items.length) { box.innerHTML = `<div class="empty">「${escapeHtml(b0.name)}」目前沒有快出現的頻道。<br>點上方其他王可切換巡查。</div>`; return; }
 
   const groups = new Map();
@@ -741,7 +785,7 @@ function renderPatrol(now) {
         <button class="pkill" data-boss="${it.boss}" data-ch="${it.ch}">⚔ 擊殺</button>
         <div class="pnm pix">CH${it.ch}</div>
         <div class="pwhere">${escapeHtml(it.killer || "匿名")} 擊殺</div>
-        <div class="pcd pix">${remainText(it, now)}</div>
+        <div class="pcd pix" data-cd="${it.boss}_${it.ch}">${remainText(it, now)}</div>
       </div>`).join("");
     return `<div class="pgroup">
       <div class="pghead">${sprite}<span class="pgname">${escapeHtml(b.name)}</span><span class="pgtally">${arr.length} 個頻道</span></div>
@@ -777,6 +821,7 @@ function tick() {
   $("clock").textContent = fmtClock(now);
   updateEstimate();
   checkAlarms(now);
+  checkRoundReminder(now);
   renderHero(now); renderGrid(); renderPatrol(now); renderRecords(now);
 }
 

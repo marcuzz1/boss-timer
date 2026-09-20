@@ -280,6 +280,7 @@ const serverOffsetRef = ref(db, ".info/serverTimeOffset");
 const connectedRef = ref(db, ".info/connected");
 
 let serverTimeOffset = 0, currentBoss = BOSSES[0].key, kills = {}, selectedCh = null, patrolBoss = BOSSES[0].key, connected = false, recFilter = "all";
+let lastHeroSig = "", lastPatrolSig = "";
 const $ = id => document.getElementById(id);
 const serverNow = () => Date.now() + serverTimeOffset;
 const killId = (k,c) => `${k}_${c}`;
@@ -310,6 +311,30 @@ function synthAlarm(){ ensureAudio(); if(!audioCtx) return; const ctx=audioCtx,t
 function playAlarm(){ if(!soundOn) return; if(customOk){ customAudio.currentTime=0; const p=customAudio.play(); if(p) p.catch(()=>synthAlarm()); setTimeout(()=>{try{customAudio.pause();}catch(e){}},1000);} else synthAlarm(); }
 const knownKill=new Set(), alerted=new Set();
 function checkAlarms(now){ for(const [id,it] of Object.entries(kills)){ if(!it||!bossByKey[it.boss]) continue; const tag=`${id}:${it.killTime}`, past=now>=windowOf(it).earliest; if(!knownKill.has(tag)){knownKill.add(tag); if(past) alerted.add(tag);} if(past&&!alerted.has(tag)){alerted.add(tag); if(it.boss===currentBoss) playAlarm();} } }
+function playReady(){
+  if(!soundOn) return; ensureAudio(); if(!audioCtx) return;
+  const ctx=audioCtx,t0=ctx.currentTime;
+  [[523,0,.12],[659,.12,.12],[784,.24,.12],[1047,.36,.18],[880,.58,.1],[1047,.70,.1],[1319,.82,.32]].forEach(([f,st,du])=>{
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.type="square"; o.frequency.setValueAtTime(f,t0+st);
+    o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0,t0+st); g.gain.linearRampToValueAtTime(.16,t0+st+.02); g.gain.exponentialRampToValueAtTime(.001,t0+st+du);
+    o.start(t0+st); o.stop(t0+st+du+.03);
+  });
+}
+let roundWasEmpty=null, roundRemindAt=null;
+function checkRoundReminder(now){
+  const items=sortedRows(now).filter(it=>it.boss===currentBoss && (it.st==="overdue"||it.st==="window"||it.st==="soon"));
+  const empty=items.length===0;
+  if(roundWasEmpty===null){ roundWasEmpty=empty; }
+  else if(roundWasEmpty && !empty){
+    const soonest=Math.min(...items.map(it=>it.earliest));
+    const t=soonest-3*MIN;
+    roundRemindAt=(t>now+1000)?t:null;
+  }
+  roundWasEmpty=empty;
+  if(roundRemindAt!==null && now>=roundRemindAt){ roundRemindAt=null; playReady(); }
+}
 
 /* build */
 function buildPicker(){
@@ -338,6 +363,7 @@ function setCurrentBoss(key){
   const im=$("trackPort").querySelector("img"); if(im){im.style.width="38px";im.style.height="38px";im.style.objectFit="contain";}
   $("trackName").textContent=b.name; $("trackMap").textContent=b.map; $("trackRt").textContent=rtLabel(b);
   updateEstimate(); renderGrid(); renderPatrol(serverNow()); renderHero(serverNow());
+  roundWasEmpty=null; roundRemindAt=null;
 }
 function updateEstimate(){
   const b=bossByKey[currentBoss], now=serverNow(), e=$("estimate");
@@ -391,6 +417,9 @@ const sortedRows = now => Object.entries(kills).filter(([,it])=>it&&bossByKey[it
 
 function renderHero(now){
   const hero=$("hero"); const b0=bossByKey[currentBoss]; const next=sortedRows(now).find(it=>it.boss===currentBoss);
+  const sig = next ? `${next.boss}|${next.ch}|${next.st}|${next.killTime}` : "none";
+  if(sig===lastHeroSig){ if(next){ const cd=hero.querySelector(".cd"); if(cd) cd.textContent=remainText(next,now); } return; }
+  lastHeroSig=sig;
   hero.classList.remove("is-overdue","is-window");
   if(!next){ hero.innerHTML=`<div class="empty">「${escapeHtml(b0.name)}」目前沒有紀錄。到「頻道」記一筆就會顯示下一隻。</div>`; return; }
   const b=bossByKey[next.boss];
@@ -430,11 +459,14 @@ function renderPatrol(now){
   const items=sortedRows(now).filter(it=>it.boss===currentBoss && ["overdue","window","soon"].includes(it.st));
   $("patrolCount").textContent=`${b0.name}・${items.length} 個`;
   const box=$("patrol");
+  const sig=currentBoss+"|"+items.map(it=>`${it.ch}:${it.st}:${it.killTime}`).join(",");
+  if(sig===lastPatrolSig){ items.forEach(it=>{ const c=box.querySelector(`[data-cd="${it.boss}_${it.ch}"]`); if(c) c.textContent=remainText(it,now); }); return; }
+  lastPatrolSig=sig;
   if(!items.length){ box.innerHTML=`<div class="empty">「${escapeHtml(b0.name)}」目前沒有快出現的頻道。<br>點上面其他王切換。</div>`; return; }
   const rows=items.map(it=>`<div class="prow ${it.st}">
       <button class="kill" data-boss="${it.boss}" data-ch="${it.ch}">⚔ 擊殺</button>
       <div class="info"><div class="ch pix">CH${it.ch}</div><div class="who">${escapeHtml(it.killer||"匿名")} 擊殺</div></div>
-      <div class="cd pix">${remainText(it,now)}</div>
+      <div class="cd pix" data-cd="${it.boss}_${it.ch}">${remainText(it,now)}</div>
     </div>`).join("");
   box.innerHTML=`<div class="pgroup"><div class="pghead">${spriteTag(b0,"sp","em",20)}<span class="nm">${escapeHtml(b0.name)}</span><span class="tl">${items.length} 個頻道</span></div>${rows}</div>`;
   box.querySelectorAll(".kill").forEach(btn=>btn.addEventListener("click",()=>recordKill(btn.dataset.boss,Number(btn.dataset.ch))));
@@ -474,7 +506,7 @@ function renderBoard(list){
 function tick(){
   const now=serverNow();
   $("clock").textContent=fmtClock(now);
-  updateEstimate(); checkAlarms(now);
+  updateEstimate(); checkAlarms(now); checkRoundReminder(now);
   renderHero(now); renderGrid(); renderPatrol(now); renderRecords(now);
 }
 
