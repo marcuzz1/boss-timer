@@ -218,7 +218,7 @@
   .msg .who { font-size: 11px; color: var(--gold); font-weight: 700; }
   .msg .who time { color: var(--grape); font-weight: 500; margin-left: 6px; }
   .msg .say { font-size: 13px; color: var(--cream); line-height: 1.45; word-break: break-word; margin-top: 2px; }
-  .board-form { display: grid; grid-template-columns: 1fr auto; gap: 6px; margin-top: 8px; }
+  .board-form { display: grid; grid-template-columns: 92px 1fr auto; gap: 6px; margin-top: 8px; }
   .board-form input {
     width: 100%; background: var(--night2); color: var(--cream); font-family: inherit;
     border: 2px solid var(--edge); border-radius: 6px; padding: 9px 10px; font-size: 13px; outline: none;
@@ -340,6 +340,7 @@
         <div class="head"><h2>留言板</h2><span class="tally">大家都看得到</span></div>
         <div class="board-msgs" id="boardMsgs"><div class="empty">還沒有留言。打聲招呼、報個王吧！</div></div>
         <form class="board-form" id="boardForm">
+          <input id="boardName" type="text" maxlength="16" placeholder="你的 ID" aria-label="你的 ID">
           <input id="boardInput" type="text" maxlength="120" placeholder="輸入留言…" aria-label="留言內容">
           <button class="btn-go" type="submit">送出</button>
         </form>
@@ -675,7 +676,11 @@ $("boardForm").addEventListener("submit", async e => {
   const input = $("boardInput");
   const text = input.value.trim();
   if (!text) return;
-  const name = ($("nick").value.trim() || "匿名").slice(0, 16);
+  const name = ($("boardName").value.trim() || $("nick").value.trim() || "匿名").slice(0, 16);
+  // 記住 ID,並同步到上方暱稱
+  localStorage.setItem("bt_nick", name);
+  $("nick").value = name;
+  if ($("boardName").value.trim()) $("boardName").value = name;
   try { await push(boardRef, { name, text: text.slice(0, 120), time: serverNow() }); input.value = ""; input.focus(); }
   catch (err) { console.error(err); alert("留言沒送出去。檢查一下 Firebase 規則有沒有開放寫入。"); }
 });
@@ -699,7 +704,7 @@ window.addEventListener("keydown", ensureAudio, { once: true });
 
 /* ---------- init ---------- */
 const savedNick = localStorage.getItem("bt_nick");
-if (savedNick) nickEl.value = savedNick;
+if (savedNick) { nickEl.value = savedNick; $("boardName").value = savedNick; }
 refreshSoundBtn();
 buildPicker();
 buildGrid();
