@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>巡王計時器 · 手機版</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --night:#000; --night2:#0a0a0f; --panel:#101017; --panel2:#1c1c26; --edge:#2b2b38;
+    --gold:#ffce54; --leaf:#5ecb7a; --violet:#b06bff; --ember:#ff6f61; --grape:#b6a6e2; --cream:#fdf3df;
+    --tabh:60px;
+  }
+  html,body{margin:0;height:100%;}
+  body{
+    background:#000; color:var(--cream); font-family:"Noto Sans TC",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .pix{font-family:"Silkscreen","Noto Sans TC",monospace;letter-spacing:.5px;}
+  img{image-rendering:pixelated;image-rendering:crisp-edges;}
+  button,input,select{font-family:inherit;}
+  .plate{background:var(--panel);border:2px solid var(--edge);border-radius:12px;}
+
+  /* top bar */
+  .mtop{
+    position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;
+    padding:calc(env(safe-area-inset-top) + 10px) 14px 10px; background:#000;border-bottom:1px solid var(--edge);
+  }
+  .mtop .crest{width:32px;height:32px;display:grid;place-items:center;font-size:19px;background:var(--gold);color:#4a2d00;border-radius:8px;flex:0 0 auto;}
+  .mtop .ttl{font-weight:900;font-size:16px;line-height:1;}
+  .mtop .clock{margin-left:auto;font-size:18px;color:var(--gold);}
+  .mtop .sbtn{background:transparent;border:none;color:var(--cream);font-size:20px;padding:4px;}
+  .mtop .sbtn.off{opacity:.5;}
+  .mtop .conn{width:9px;height:9px;border-radius:50%;background:var(--gold);flex:0 0 auto;}
+  .mtop .conn.on{background:var(--leaf);}
+
+  /* hero */
+  .mhero{margin:12px 12px 0;padding:12px 14px;display:flex;align-items:center;gap:12px;min-height:76px;}
+  .mhero .port{width:58px;height:58px;flex:0 0 auto;display:grid;place-items:center;background:var(--night2);border:2px solid var(--edge);border-radius:10px;overflow:hidden;}
+  .mhero .port img{width:52px;height:52px;object-fit:contain;} .mhero .port .emoji{font-size:34px;}
+  .mhero .eb{font-size:12px;color:var(--grape);font-weight:700;}
+  .mhero .nm{font-size:19px;font-weight:900;}
+  .mhero .whr{font-size:12px;color:var(--grape);}
+  .mhero .rt{margin-left:auto;text-align:right;}
+  .mhero .cd{font-size:30px;line-height:1;color:var(--gold);}
+  .mhero .stt{font-size:12px;color:var(--grape);margin-top:4px;}
+  .mhero.is-overdue{border-color:var(--ember);} .mhero.is-overdue .cd{color:var(--ember);}
+  .mhero.is-window{border-color:var(--violet);} .mhero.is-window .cd{color:var(--violet);}
+  .mhero .empty{color:var(--grape);font-size:13px;line-height:1.6;}
+
+  /* views */
+  main{padding:12px 12px calc(var(--tabh) + env(safe-area-inset-bottom) + 16px);}
+  .view{display:none;} .view.active{display:block;}
+  .h2{font-size:15px;font-weight:900;margin:2px 2px 10px;display:flex;align-items:baseline;gap:8px;}
+  .h2 .tally{font-size:12px;color:var(--grape);font-weight:700;}
+
+  /* boss picker */
+  .picker{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;}
+  .pick{flex:0 0 auto;width:82px;text-align:center;background:var(--night2);border:2px solid var(--edge);border-radius:10px;padding:8px 6px;}
+  .pick.on{border-color:var(--gold);background:#24222e;box-shadow:inset 0 0 0 1px var(--gold);}
+  .pick .sp{width:38px;height:38px;object-fit:contain;} .pick .em{font-size:28px;line-height:38px;}
+  .pick .nm{font-size:12px;font-weight:700;margin-top:3px;} .pick .rt{font-size:10px;color:var(--grape);margin-top:2px;}
+
+  /* record */
+  .track{display:flex;align-items:center;gap:12px;margin:14px 0 10px;padding:10px;}
+  .track .port{width:44px;height:44px;background:var(--night2);border:2px solid var(--edge);border-radius:8px;display:grid;place-items:center;overflow:hidden;}
+  .track .port img{width:38px;height:38px;object-fit:contain;} .track .port .emoji{font-size:26px;}
+  .track .lab{font-size:11px;color:var(--grape);} .track .val{font-weight:900;font-size:15px;}
+  .fld{margin-bottom:10px;} .fld label{display:block;font-size:12px;color:var(--grape);margin-bottom:5px;font-weight:700;}
+  .fld input,.fld select{width:100%;background:var(--night2);color:var(--cream);border:2px solid var(--edge);border-radius:9px;padding:13px 12px;font-size:15px;outline:none;}
+  .fld input:focus,.fld select:focus{border-color:var(--gold);}
+  .big-go{width:100%;background:var(--leaf);color:#06210f;border:2px solid var(--edge);border-radius:10px;padding:15px;font-size:16px;font-weight:900;box-shadow:0 3px 0 var(--edge);}
+  .big-go:active{transform:translateY(3px);box-shadow:0 0 0 var(--edge);}
+  .est{margin-top:10px;color:var(--grape);font-size:12px;} .est b{color:var(--cream);}
+
+  /* grid */
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin:14px 2px 8px;font-size:12px;color:var(--grape);}
+  .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .chip{width:11px;height:11px;border:1px solid var(--edge);display:inline-block;}
+  .chip.overdue{background:var(--ember);} .chip.window{background:var(--violet);} .chip.soon{background:var(--gold);} .chip.counting{background:var(--leaf);} .chip.idle{background:#3a3363;}
+  .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+  .cell{min-height:56px;background:var(--night2);border:2px solid var(--edge);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;user-select:none;}
+  .cell .ch{font-size:14px;color:var(--grape);} .cell .cd{font-size:12px;margin-top:2px;color:var(--cream);}
+  .cell.selected{outline:3px solid var(--gold);outline-offset:1px;}
+  .cell.counting{border-color:var(--leaf);} .cell.counting .cd{color:var(--leaf);}
+  .cell.soon{border-color:var(--gold);} .cell.soon .cd{color:var(--gold);}
+  .cell.window{border-color:var(--violet);} .cell.window .cd{color:var(--violet);}
+  .cell.overdue{border-color:var(--ember);background:#33172a;} .cell.overdue .cd{color:var(--ember);}
+  .hint{color:var(--grape);font-size:12px;margin-top:10px;text-align:center;}
+
+  /* patrol */
+  .pgroup{background:var(--panel2);border:2px solid var(--edge);border-radius:12px;padding:10px;margin-bottom:12px;}
+  .pghead{display:flex;align-items:center;gap:8px;padding:2px 2px 8px;border-bottom:1px dashed #3a3363;margin-bottom:8px;}
+  .pghead .sp{width:26px;height:26px;object-fit:contain;} .pghead .em{font-size:20px;line-height:26px;}
+  .pghead .nm{font-weight:900;font-size:14px;} .pghead .tl{margin-left:auto;font-size:11px;color:var(--grape);font-weight:700;}
+  .prow{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;background:var(--night2);border:2px solid var(--edge);border-radius:9px;padding:9px 10px;}
+  .prow + .prow{margin-top:7px;}
+  .prow .ch{font-size:14px;font-weight:700;} .prow .who{font-size:12px;color:var(--grape);} .prow .cd{font-size:17px;}
+  .prow.soon .cd{color:var(--gold);} .prow.window .cd{color:var(--violet);} .prow.overdue .cd{color:var(--ember);}
+  .prow .kill{grid-column:1 / -1;margin-top:2px;background:var(--leaf);color:#06210f;border:2px solid var(--edge);border-radius:8px;padding:10px;font-size:14px;font-weight:900;box-shadow:0 2px 0 var(--edge);}
+  .prow .kill:active{transform:translateY(2px);box-shadow:0 0 0 var(--edge);}
+
+  /* records list */
+  .rec{display:flex;align-items:center;gap:10px;background:var(--night2);border:2px solid var(--edge);border-radius:10px;padding:10px;margin-bottom:8px;}
+  .rec .nm{font-weight:700;font-size:14px;} .rec .sub{font-size:12px;color:var(--grape);margin-top:2px;}
+  .rec .rt{margin-left:auto;text-align:right;} .rec .cd{font-size:15px;} .rec .tag{font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px;border:1px solid var(--edge);display:inline-block;margin-top:3px;}
+  .tag.counting{background:rgba(94,203,122,.2);color:var(--leaf);} .tag.soon{background:rgba(255,206,84,.2);color:var(--gold);}
+  .tag.window{background:rgba(176,107,255,.2);color:var(--violet);} .tag.overdue{background:rgba(255,111,97,.2);color:var(--ember);}
+  .rec .del{background:#3a1c28;color:var(--ember);border:2px solid var(--edge);border-radius:8px;padding:8px 10px;font-size:12px;font-weight:700;}
+
+  /* board */
+  .msgs{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;}
+  .msg{background:var(--night2);border:2px solid var(--edge);border-radius:10px;padding:9px 11px;}
+  .msg .who{font-size:12px;color:var(--gold);font-weight:700;} .msg .who time{color:var(--grape);font-weight:500;margin-left:6px;}
+  .msg .say{font-size:14px;line-height:1.45;word-break:break-word;margin-top:3px;}
+  .bform{position:sticky;bottom:calc(var(--tabh) + env(safe-area-inset-bottom));background:#000;padding:8px 0;display:grid;grid-template-columns:96px 1fr auto;gap:7px;}
+  .bform input{background:var(--night2);color:var(--cream);border:2px solid var(--edge);border-radius:9px;padding:12px 11px;font-size:15px;outline:none;min-width:0;}
+  .bform input:focus{border-color:var(--gold);}
+  .bform button{background:var(--leaf);color:#06210f;border:2px solid var(--edge);border-radius:9px;padding:0 16px;font-size:15px;font-weight:900;}
+
+  .empty{color:var(--grape);text-align:center;padding:20px;font-size:13px;line-height:1.7;}
+
+  /* bottom tabs */
+  .mtabs{
+    position:fixed;left:0;right:0;bottom:0;z-index:30;height:calc(var(--tabh) + env(safe-area-inset-bottom));
+    padding-bottom:env(safe-area-inset-bottom);
+    display:grid;grid-template-columns:repeat(4,1fr);background:#0a0a0f;border-top:1px solid var(--edge);
+  }
+  .tab{background:transparent;border:none;color:var(--grape);font-size:12px;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;}
+  .tab .ic{font-size:20px;line-height:1;}
+  .tab.on{color:var(--gold);}
+  .tab .badge{position:absolute;transform:translate(14px,-14px);background:var(--ember);color:#fff;font-size:10px;font-weight:700;border-radius:999px;padding:0 5px;min-width:16px;text-align:center;}
+
+  @media (prefers-reduced-motion: no-preference){
+    .cell.overdue{animation:nudge 1.6s ease-in-out infinite;}
+    @keyframes nudge{0%,92%,100%{transform:translateY(0);}96%{transform:translateY(-2px);}}
+  }
+</style>
+</head>
+<body>
+
+<div class="mtop">
+  <div class="crest">🍄</div>
+  <div class="ttl">巡王計時器</div>
+  <div class="clock pix" id="clock">--:--:--</div>
+  <button class="sbtn" id="soundBtn" type="button" aria-label="音效開關">🔊</button>
+  <div class="conn" id="conn" aria-label="連線狀態"></div>
+</div>
+
+<section class="plate mhero" id="hero" aria-live="polite">
+  <div class="empty">現在沒有王在倒數。到「頻道」記一筆,這裡就會告訴你下一隻。</div>
+</section>
+
+<main>
+  <!-- 巡查 -->
+  <section class="view active" data-view="patrol">
+    <div class="h2">優先巡查<span class="tally" id="patrolCount">0 個</span></div>
+    <div id="patrol"><div class="empty">還沒有快出現的王。<br>倒數剩 5 分鐘內會排到這裡。</div></div>
+  </section>
+
+  <!-- 頻道 / 記錄 -->
+  <section class="view" data-view="ch">
+    <div class="h2">選擇 BOSS</div>
+    <div class="picker" id="picker"></div>
+
+    <div class="plate track">
+      <div class="port" id="trackPort"></div>
+      <div><div class="lab">目前追蹤</div><div class="val" id="trackName" style="color:var(--gold)">—</div>
+      <div class="lab" id="trackMap" style="margin-top:3px;">—</div></div>
+      <div style="margin-left:auto;text-align:right;"><div class="lab">重生</div><div class="val" id="trackRt">—</div></div>
+    </div>
+
+    <div class="fld"><label for="chInput">頻道 CH（1~60）</label><input id="chInput" type="number" inputmode="numeric" min="1" max="60" placeholder="輸入頻道"></div>
+    <div class="fld"><label for="killerInput">擊殺者</label><input id="killerInput" type="text" maxlength="16" placeholder="預設用你的 ID"></div>
+    <button class="big-go" id="recordBtn" type="button">⚔ 記錄擊殺</button>
+    <div class="est" id="estimate">現在記錄的話,預估重生：<b>—</b></div>
+
+    <div class="legend">
+      <span><i class="chip overdue"></i>已重生</span>
+      <span><i class="chip window"></i>重生區間</span>
+      <span><i class="chip soon"></i>快出現</span>
+      <span><i class="chip counting"></i>倒數中</span>
+      <span><i class="chip idle"></i>沒紀錄</span>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="hint">點頻道帶入上面的欄位,再按「記錄擊殺」。</div>
+  </section>
+
+  <!-- 紀錄 -->
+  <section class="view" data-view="log">
+    <div class="h2">全部紀錄<span class="tally" id="recordCount">0 筆</span>
+      <button id="clearAllBtn" style="margin-left:auto;background:#3a1c28;color:var(--ember);border:2px solid var(--edge);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;">全部清除</button>
+    </div>
+    <div id="recordList"><div class="empty">還沒有紀錄。到「頻道」記一筆吧。</div></div>
+  </section>
+
+  <!-- 留言 -->
+  <section class="view" data-view="board">
+    <div class="h2">留言板<span class="tally">大家都看得到</span></div>
+    <div class="msgs" id="boardMsgs"><div class="empty">還沒有留言。打聲招呼、報個王吧！</div></div>
+    <form class="bform" id="boardForm">
+      <input id="boardName" type="text" maxlength="16" placeholder="你的 ID">
+      <input id="boardInput" type="text" maxlength="120" placeholder="輸入留言…">
+      <button type="submit">送出</button>
+    </form>
+  </section>
+</main>
+
+<nav class="mtabs">
+  <button class="tab on" data-tab="patrol"><span class="ic">🎯</span>巡查</button>
+  <button class="tab" data-tab="ch"><span class="ic">📺</span>頻道</button>
+  <button class="tab" data-tab="log"><span class="ic">▤</span>紀錄</button>
+  <button class="tab" data-tab="board"><span class="ic">💬</span>留言</button>
+</nav>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, remove, push, query, limitToLast } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBBajHIqYG0ENHv-XDDeD_WVYt4hnDpqsw",
+  authDomain: "mogumogu-8c7a9.firebaseapp.com",
+  databaseURL: "https://mogumogu-8c7a9-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "mogumogu-8c7a9",
+  storageBucket: "mogumogu-8c7a9.firebasestorage.app",
+  messagingSenderId: "966047743394",
+  appId: "1:966047743394:web:426b005916a5cf4c3e06fb",
+  measurementId: "G-R40HSKYMBQ"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+/* 與桌機版共用同一份設定與資料 */
+const IMG = "https://maplebossteam.com/assets/bosses/";
+const BOSSES = [
+  { key:"zombie",   name:"殭屍蘑菇王", emoji:"🧟", img:IMG+"zombie-mushmom.png",    map:"螞蟻礦坑隱藏地圖", respawnMin:40,  respawnMax:60 },
+  { key:"mushking", name:"蘑菇王",     emoji:"🍄", img:IMG+"mushmom.png",           map:"菇菇王出沒地",     respawnMin:40,  respawnMax:60 },
+  { key:"blackcroc",name:"沼澤巨鱷",   emoji:"🐊", img:IMG+"swamp-croc.png",        map:"鱷魚潭 I / II",   respawnMin:45,  respawnMax:45 },
+  { key:"monkey",   name:"殭屍猴王",   emoji:"🐒", img:IMG+"zombie-lupin-king.png", map:"巫婆森林 I / II", respawnMin:45,  respawnMax:45 },
+  { key:"hermit",   name:"巨居蟹",     emoji:"🦀", img:IMG+"king-clang.png",        map:"海龜沙灘",         respawnMin:45,  respawnMax:45 },
+  { key:"balrog",   name:"巴洛古",     emoji:"👹", img:IMG+"balrog.png",            map:"被詛咒的寺院",     respawnMin:240, respawnMax:360 },
+  { key:"treeking", name:"樹妖王",     emoji:"🌳", img:IMG+"deo.png",               map:"東方岩石山 V",     respawnMin:45,  respawnMax:45 },
+  { key:"test",     name:"測試王",     emoji:"🧪", img:"",                          map:"測試用",           respawnMin:1,   respawnMax:1  },
+];
+const bossByKey = Object.fromEntries(BOSSES.map(b => [b.key, b]));
+const CHANNELS = 60, SOON_MS = 5*60*1000, KILLS_PATH = "bossTimer/kills", MIN = 60*1000;
+
+const killsRef = ref(db, KILLS_PATH);
+const boardRef = ref(db, "bossTimer/board");
+const serverOffsetRef = ref(db, ".info/serverTimeOffset");
+const connectedRef = ref(db, ".info/connected");
+
+let serverTimeOffset = 0, currentBoss = BOSSES[0].key, kills = {}, selectedCh = null;
+const $ = id => document.getElementById(id);
+const serverNow = () => Date.now() + serverTimeOffset;
+const killId = (k,c) => `${k}_${c}`;
+
+const isFloating = b => b.respawnMin !== b.respawnMax;
+const rtLabel = b => isFloating(b) ? `${b.respawnMin}~${b.respawnMax}分` : `${b.respawnMin}分`;
+const windowOf = it => ({ earliest: it.killTime + bossByKey[it.boss].respawnMin*MIN, latest: it.killTime + bossByKey[it.boss].respawnMax*MIN });
+const fmtClock = ts => { const d=new Date(ts),p=n=>String(n).padStart(2,"0"); return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; };
+const fmtHM = ts => { const d=new Date(ts),p=n=>String(n).padStart(2,"0"); return `${p(d.getHours())}:${p(d.getMinutes())}`; };
+function fmtCountdown(ms){ if(ms<=0) return "00:00"; const s=Math.ceil(ms/1000),p=n=>String(n).padStart(2,"0"); const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),c=s%60; return h>0?`${p(h)}:${p(m)}:${p(c)}`:`${p(m)}:${p(c)}`; }
+function stateOf(it,now){ if(!it||!bossByKey[it.boss]) return "idle"; const {earliest,latest}=windowOf(it); if(now>=latest) return "overdue"; if(now>=earliest) return "window"; if(earliest-now<=SOON_MS) return "soon"; return "counting"; }
+const STATE_LABEL = { idle:"沒紀錄", counting:"倒數中", soon:"快出現", window:"重生區間", overdue:"已重生" };
+function remainText(it,now){ const st=stateOf(it,now),{earliest,latest}=windowOf(it); if(st==="overdue") return "已重生"; if(st==="window") return "區間 "+fmtCountdown(latest-now); return fmtCountdown(earliest-now); }
+const escapeHtml = t => String(t).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
+function spriteTag(b, cls, emCls, px){
+  return b.img
+    ? `<img class="${cls}" src="${b.img}" alt="${escapeHtml(b.name)}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'${emCls}',textContent:'${b.emoji}'}))">`
+    : `<span class="${emCls}" style="font-size:${px}px;">${b.emoji}</span>`;
+}
+
+/* sound */
+let soundOn = localStorage.getItem("bt_sound") !== "off";
+let audioCtx = null;
+const customAudio = new Audio("usagi.mp3"); let customOk=false;
+customAudio.addEventListener("canplaythrough",()=>{customOk=true;}); customAudio.addEventListener("error",()=>{customOk=false;});
+function ensureAudio(){ if(!audioCtx){const AC=window.AudioContext||window.webkitAudioContext; if(AC) audioCtx=new AC();} if(audioCtx&&audioCtx.state==="suspended") audioCtx.resume(); }
+function synthAlarm(){ ensureAudio(); if(!audioCtx) return; const ctx=audioCtx,t0=ctx.currentTime; [[880,0,.16],[1245,.16,.16],[1046,.34,.16],[1568,.52,.45]].forEach(([f,st,du])=>{ const o=ctx.createOscillator(),g=ctx.createGain(); o.type="triangle"; o.frequency.setValueAtTime(f,t0+st); o.frequency.linearRampToValueAtTime(f*1.05,t0+st+du); o.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(0,t0+st); g.gain.linearRampToValueAtTime(.25,t0+st+.02); g.gain.exponentialRampToValueAtTime(.001,t0+st+du); o.start(t0+st); o.stop(t0+st+du+.03); }); }
+function playAlarm(){ if(!soundOn) return; if(customOk){ customAudio.currentTime=0; const p=customAudio.play(); if(p) p.catch(()=>synthAlarm()); setTimeout(()=>{try{customAudio.pause();}catch(e){}},1000);} else synthAlarm(); }
+const knownKill=new Set(), alerted=new Set();
+function checkAlarms(now){ for(const [id,it] of Object.entries(kills)){ if(!it||!bossByKey[it.boss]) continue; const tag=`${id}:${it.killTime}`, past=now>=windowOf(it).earliest; if(!knownKill.has(tag)){knownKill.add(tag); if(past) alerted.add(tag);} if(past&&!alerted.has(tag)){alerted.add(tag); playAlarm();} } }
+
+/* build */
+function buildPicker(){
+  const list=$("picker"); list.innerHTML="";
+  BOSSES.forEach(b=>{
+    const el=document.createElement("div"); el.className="pick"; el.id=`pick-${b.key}`;
+    el.innerHTML=`${spriteTag(b,"sp","em",28)}<div class="nm">${b.name}</div><div class="rt">${rtLabel(b)}</div>`;
+    el.addEventListener("click",()=>setCurrentBoss(b.key));
+    list.appendChild(el);
+  });
+}
+function buildGrid(){
+  const grid=$("grid"); grid.innerHTML="";
+  for(let i=1;i<=CHANNELS;i++){
+    const c=document.createElement("div"); c.className="cell"; c.id=`cell-${i}`;
+    c.innerHTML=`<div class="ch pix">${i}</div><div class="cd pix" id="cd-${i}"></div>`;
+    c.addEventListener("click",()=>{ selectedCh=i; $("chInput").value=i; renderGrid(); });
+    grid.appendChild(c);
+  }
+}
+function setCurrentBoss(key){
+  currentBoss=key;
+  BOSSES.forEach(b=>$(`pick-${b.key}`).classList.toggle("on",b.key===key));
+  const b=bossByKey[key];
+  $("trackPort").innerHTML=spriteTag(b,"","emoji",26);
+  const im=$("trackPort").querySelector("img"); if(im){im.style.width="38px";im.style.height="38px";im.style.objectFit="contain";}
+  $("trackName").textContent=b.name; $("trackMap").textContent=b.map; $("trackRt").textContent=rtLabel(b);
+  updateEstimate(); renderGrid();
+}
+function updateEstimate(){
+  const b=bossByKey[currentBoss], now=serverNow(), e=$("estimate");
+  if(isFloating(b)) e.innerHTML=`現在記錄的話,預估重生：<b>${fmtHM(now+b.respawnMin*MIN)} ~ ${fmtHM(now+b.respawnMax*MIN)}</b>（${b.respawnMin}~${b.respawnMax}分浮動）`;
+  else e.innerHTML=`現在記錄的話,預估重生：<b>${fmtHM(now+b.respawnMin*MIN)}</b>（${b.respawnMin}分後）`;
+}
+
+/* writes */
+async function recordKill(bossKey,ch){
+  ch=Number(ch);
+  if(!ch||ch<1||ch>CHANNELS){ alert("請輸入 1~60 的頻道"); return; }
+  const b=bossByKey[bossKey];
+  const killer=($("killerInput").value.trim()||localStorage.getItem("bt_nick")||"匿名").slice(0,16);
+  try{ await set(ref(db,`${KILLS_PATH}/${killId(bossKey,ch)}`),{boss:bossKey,bossName:b.name,ch,killer,killTime:serverNow()}); selectedCh=null; }
+  catch(err){ console.error(err); alert("記錄沒存上去。檢查 Firebase 規則。"); }
+}
+async function deleteKill(id){ try{ await remove(ref(db,`${KILLS_PATH}/${id}`)); }catch(err){ console.error(err); alert("刪不掉。"); } }
+async function clearAll(){ if(!confirm("要清掉全部紀錄嗎？")) return; try{ await remove(killsRef); }catch(err){ console.error(err); alert("清不掉。"); } }
+
+/* render */
+const sortedRows = now => Object.entries(kills).filter(([,it])=>it&&bossByKey[it.boss]).map(([id,it])=>({id,...it,st:stateOf(it,now),earliest:windowOf(it).earliest})).sort((a,b)=>a.earliest-b.earliest);
+
+function renderHero(now){
+  const hero=$("hero"); const next=sortedRows(now)[0];
+  hero.classList.remove("is-overdue","is-window");
+  if(!next){ hero.innerHTML=`<div class="empty">現在沒有王在倒數。到「頻道」記一筆,這裡就會告訴你下一隻。</div>`; return; }
+  const b=bossByKey[next.boss];
+  if(next.st==="overdue") hero.classList.add("is-overdue"); else if(next.st==="window") hero.classList.add("is-window");
+  const line = next.st==="overdue" ? "已重生,快去 CH"+next.ch : next.st==="window" ? "重生區間,盯 CH"+next.ch : next.st==="soon" ? "快出現了" : "倒數中";
+  hero.innerHTML=`
+    <div class="port">${spriteTag(b,"","emoji",34)}</div>
+    <div><div class="eb">下一隻出現</div><div class="nm">${escapeHtml(b.name)}</div><div class="whr">CH${next.ch} ｜ ${escapeHtml(b.map)}</div></div>
+    <div class="rt"><div class="cd pix">${remainText(next,now)}</div><div class="stt">${line}</div></div>`;
+}
+function renderGrid(){
+  const now=serverNow();
+  for(let i=1;i<=CHANNELS;i++){
+    const cell=$(`cell-${i}`), cd=$(`cd-${i}`), item=kills[killId(currentBoss,i)], st=stateOf(item,now);
+    cell.classList.remove("counting","soon","window","overdue","selected");
+    if(st!=="idle") cell.classList.add(st);
+    if(selectedCh===i) cell.classList.add("selected");
+    cd.textContent = st==="idle" ? "" : remainText(item,now);
+  }
+}
+function renderPatrol(now){
+  const items=sortedRows(now).filter(it=>["overdue","window","soon"].includes(it.st));
+  $("patrolCount").textContent=`${items.length} 個`;
+  const badge=$("patrolBadge"); if(badge){ badge.textContent=items.length||""; badge.style.display=items.length?"":"none"; }
+  const box=$("patrol");
+  if(!items.length){ box.innerHTML='<div class="empty">還沒有快出現的王。<br>倒數剩 5 分鐘內會排到這裡。</div>'; return; }
+  const groups=new Map(); items.forEach(it=>{ if(!groups.has(it.boss)) groups.set(it.boss,[]); groups.get(it.boss).push(it); });
+  const order=[...groups.entries()].map(([key,arr])=>({key,arr,min:Math.min(...arr.map(x=>x.earliest))})).sort((a,b)=>a.min-b.min);
+  box.innerHTML=order.map(({key,arr})=>{
+    const b=bossByKey[key];
+    const rows=arr.map(it=>`<div class="prow ${it.st}">
+        <div class="ch pix">CH${it.ch}</div>
+        <div class="who">${escapeHtml(it.killer||"匿名")} 擊殺</div>
+        <div class="cd pix">${remainText(it,now)}</div>
+        <button class="kill" data-boss="${it.boss}" data-ch="${it.ch}">⚔ 擊殺 · 重新計時</button>
+      </div>`).join("");
+    return `<div class="pgroup"><div class="pghead">${spriteTag(b,"sp","em",20)}<span class="nm">${escapeHtml(b.name)}</span><span class="tl">${arr.length} 個頻道</span></div>${rows}</div>`;
+  }).join("");
+  box.querySelectorAll(".kill").forEach(btn=>btn.addEventListener("click",()=>recordKill(btn.dataset.boss,Number(btn.dataset.ch))));
+}
+function renderRecords(now){
+  const rows=sortedRows(now);
+  $("recordCount").textContent=`${rows.length} 筆`;
+  const box=$("recordList");
+  if(!rows.length){ box.innerHTML='<div class="empty">還沒有紀錄。到「頻道」記一筆吧。</div>'; return; }
+  box.innerHTML=rows.map(r=>{
+    const b=bossByKey[r.boss];
+    return `<div class="rec">
+      ${spriteTag(b,"sp","em",22).replace('class="sp"','class="sp" style="width:34px;height:34px;object-fit:contain;"')}
+      <div><div class="nm">${escapeHtml(b.name)} · CH${r.ch}</div><div class="sub">${escapeHtml(r.killer||"匿名")} ｜ ${fmtHM(r.killTime)} 擊殺</div><span class="tag ${r.st}">${STATE_LABEL[r.st]}</span></div>
+      <div class="rt"><div class="cd pix">${remainText(r,now)}</div></div>
+      <button class="del" data-del="${r.id}">刪</button>
+    </div>`;
+  }).join("");
+  box.querySelectorAll(".del").forEach(btn=>btn.addEventListener("click",()=>deleteKill(btn.dataset.del)));
+}
+function renderBoard(list){
+  const box=$("boardMsgs");
+  if(!list.length){ box.innerHTML='<div class="empty">還沒有留言。打聲招呼、報個王吧！</div>'; return; }
+  box.innerHTML=list.map(m=>`<div class="msg"><div class="who">${escapeHtml(m.name||"匿名")}<time>${fmtHM(m.time||serverNow())}</time></div><div class="say">${escapeHtml(m.text||"")}</div></div>`).join("");
+  box.scrollTop=box.scrollHeight;
+}
+
+function tick(){
+  const now=serverNow();
+  $("clock").textContent=fmtClock(now);
+  updateEstimate(); checkAlarms(now);
+  renderHero(now); renderGrid(); renderPatrol(now); renderRecords(now);
+}
+
+onValue(serverOffsetRef,s=>{ serverTimeOffset=s.val()||0; });
+onValue(connectedRef,s=>{ $("conn").classList.toggle("on",s.val()===true); });
+onValue(killsRef,s=>{ kills=s.val()||{}; const now=serverNow(); renderHero(now); renderGrid(); renderPatrol(now); renderRecords(now); });
+onValue(query(boardRef,limitToLast(100)),s=>{ const list=[]; s.forEach(c=>list.push(c.val()||{})); renderBoard(list); });
+
+/* events */
+$("recordBtn").addEventListener("click",()=>recordKill(currentBoss,$("chInput").value));
+$("chInput").addEventListener("keydown",e=>{ if(e.key==="Enter") recordKill(currentBoss,$("chInput").value); });
+$("clearAllBtn").addEventListener("click",clearAll);
+$("boardForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const input=$("boardInput"); const text=input.value.trim(); if(!text) return;
+  const name=($("boardName").value.trim()||localStorage.getItem("bt_nick")||"匿名").slice(0,16);
+  localStorage.setItem("bt_nick",name); $("boardName").value=name;
+  try{ await push(boardRef,{name,text:text.slice(0,120),time:serverNow()}); input.value=""; }
+  catch(err){ console.error(err); alert("留言沒送出去。檢查 Firebase 規則。"); }
+});
+$("soundBtn").addEventListener("click",()=>{ soundOn=!soundOn; localStorage.setItem("bt_sound",soundOn?"on":"off"); $("soundBtn").textContent=soundOn?"🔊":"🔇"; $("soundBtn").classList.toggle("off",!soundOn); if(soundOn){ ensureAudio(); playAlarm(); } });
+
+/* tabs */
+document.querySelectorAll(".tab").forEach(tab=>{
+  tab.addEventListener("click",()=>{
+    const v=tab.dataset.tab;
+    document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t===tab));
+    document.querySelectorAll(".view").forEach(sec=>sec.classList.toggle("active",sec.dataset.view===v));
+    window.scrollTo({top:0,behavior:"instant"in window?"instant":"auto"});
+  });
+});
+window.addEventListener("pointerdown",ensureAudio,{once:true});
+
+/* init */
+const savedNick=localStorage.getItem("bt_nick");
+if(savedNick) $("boardName").value=savedNick;
+$("soundBtn").textContent=soundOn?"🔊":"🔇"; $("soundBtn").classList.toggle("off",!soundOn);
+buildPicker(); buildGrid(); setCurrentBoss(currentBoss);
+tick(); setInterval(tick,1000);
+</script>
+</body>
+</html>
