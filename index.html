@@ -11,8 +11,8 @@
   * { box-sizing: border-box; }
 
   :root {
-    --night:  #201a3c;
-    --night2: #171233;
+    --night:  #000000;
+    --night2: #100e1e;
     --panel:  #2c2456;
     --panel2: #372d68;
     --edge:   #0d0820;
@@ -30,9 +30,9 @@
     color: var(--cream);
     font-family: "Noto Sans TC", sans-serif;
     background:
-      radial-gradient(900px 500px at 82% -8%, #3a2c6b 0%, rgba(58,44,107,0) 60%),
-      radial-gradient(700px 460px at 12% 108%, #2a2350 0%, rgba(42,35,80,0) 55%),
-      linear-gradient(180deg, #241d44 0%, var(--night) 45%, var(--night2) 100%);
+      radial-gradient(900px 520px at 82% -10%, #191233 0%, rgba(0,0,0,0) 62%),
+      radial-gradient(700px 460px at 10% 110%, #140f2a 0%, rgba(0,0,0,0) 58%),
+      #000;
   }
 
   .pix { font-family: "Silkscreen", "Noto Sans TC", monospace; letter-spacing: .5px; }
@@ -105,7 +105,7 @@
   .hero-empty { color: var(--grape); font-size: 14px; }
 
   /* ---------- main columns ---------- */
-  .main { flex: 1; min-height: 0; display: grid; grid-template-columns: 1.75fr 1fr; gap: 12px; overflow: hidden; }
+  .main { flex: 1; min-height: 0; display: grid; grid-template-columns: 1.6fr 1fr 0.85fr; gap: 12px; overflow: hidden; }
   .col { min-height: 0; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
   .plate.section { padding: 10px 12px; display: flex; flex-direction: column; min-height: 0; }
   .head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
@@ -202,6 +202,29 @@
   .del { background: #3a1c28; color: var(--ember); padding: 4px 8px; font-size: 11px; box-shadow: none; border-radius: 5px; }
   .del:active { transform: none; }
 
+  /* patrol grouped by boss */
+  .pgroup { display: flex; flex-direction: column; gap: 6px; }
+  .pgroup + .pgroup { margin-top: 4px; }
+  .pghead { display: flex; align-items: center; gap: 8px; padding: 2px 2px 4px; border-bottom: 1px dashed #3a3363; }
+  .pghead .pgsprite { width: 24px; height: 24px; object-fit: contain; }
+  .pghead .pgemoji { font-size: 18px; line-height: 24px; }
+  .pghead .pgname { font-weight: 900; font-size: 13px; }
+  .pghead .pgtally { margin-left: auto; font-size: 11px; color: var(--grape); font-weight: 700; }
+
+  /* message board */
+  .boardwrap { flex: 1; min-height: 0; }
+  .board-msgs { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 7px; padding-right: 2px; }
+  .msg { background: var(--night2); border: 2px solid var(--edge); border-radius: 7px; padding: 6px 9px; }
+  .msg .who { font-size: 11px; color: var(--gold); font-weight: 700; }
+  .msg .who time { color: var(--grape); font-weight: 500; margin-left: 6px; }
+  .msg .say { font-size: 13px; color: var(--cream); line-height: 1.45; word-break: break-word; margin-top: 2px; }
+  .board-form { display: grid; grid-template-columns: 1fr auto; gap: 6px; margin-top: 8px; }
+  .board-form input {
+    width: 100%; background: var(--night2); color: var(--cream); font-family: inherit;
+    border: 2px solid var(--edge); border-radius: 6px; padding: 9px 10px; font-size: 13px; outline: none;
+  }
+  .board-form input:focus-visible { border-color: var(--gold); }
+
   /* motion only where it signals state, and only if the visitor allows it */
   @media (prefers-reduced-motion: no-preference) {
     .cell.overdue { animation: nudge 1.6s ease-in-out infinite; }
@@ -211,14 +234,15 @@
   }
 
   /* ---------- small screens: let it breathe and scroll ---------- */
-  @media (max-width: 900px) {
+  @media (max-width: 1100px) {
     .app { height: auto; overflow: visible; }
     .main { grid-template-columns: 1fr; overflow: visible; }
-    .col, .gridwrap, .patrolwrap, .recwrap { overflow: visible; }
-    .grid, .patrol, .tablewrap { overflow: visible; }
+    .col, .gridwrap, .patrolwrap, .recwrap, .boardwrap { overflow: visible; }
+    .grid, .patrol, .tablewrap, .board-msgs { overflow: visible; }
     .grid { grid-template-columns: repeat(6, minmax(0,1fr)); }
     .form { grid-template-columns: 1fr 1fr; }
     .hero-time { margin-left: 0; }
+    .board-msgs { max-height: 260px; overflow-y: auto; }
   }
   @media (max-width: 520px) {
     .grid { grid-template-columns: repeat(4, minmax(0,1fr)); }
@@ -309,13 +333,25 @@
         </div>
       </section>
     </div>
+
+    <!-- Message board column -->
+    <div class="col">
+      <section class="plate section boardwrap">
+        <div class="head"><h2>留言板</h2><span class="tally">大家都看得到</span></div>
+        <div class="board-msgs" id="boardMsgs"><div class="empty">還沒有留言。打聲招呼、報個王吧！</div></div>
+        <form class="board-form" id="boardForm">
+          <input id="boardInput" type="text" maxlength="120" placeholder="輸入留言…" aria-label="留言內容">
+          <button class="btn-go" type="submit">送出</button>
+        </form>
+      </section>
+    </div>
   </div>
 
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-import { getDatabase, ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js";
+import { getDatabase, ref, onValue, set, remove, push, query, limitToLast } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBBajHIqYG0ENHv-XDDeD_WVYt4hnDpqsw",
@@ -351,6 +387,7 @@ const KILLS_PATH = "bossTimer/kills";
 const MIN = 60 * 1000;
 
 const killsRef = ref(db, KILLS_PATH);
+const boardRef = ref(db, "bossTimer/board");
 const serverOffsetRef = ref(db, ".info/serverTimeOffset");
 const connectedRef = ref(db, ".info/connected");
 
@@ -561,12 +598,26 @@ function renderPatrol(now) {
   $("patrolCount").textContent = `${items.length} 個`;
   const box = $("patrol");
   if (!items.length) { box.innerHTML = '<div class="empty">還沒有快出現的王。<br>倒數剩 5 分鐘內的王會排到這裡。</div>'; return; }
-  box.innerHTML = items.map(it => {
-    const b = bossByKey[it.boss];
-    return `<div class="prow ${it.st}">
-      ${portrait(b, "psprite", 22).replace('class="psprite"','class="psprite"').replace("className:'emoji'","className:'pemoji'")}
-      <div><div class="pnm">${escapeHtml(b.name)}</div><div class="pwhere">CH${it.ch} ｜ ${escapeHtml(it.killer || "匿名")}</div></div>
-      <div class="pcd pix">${remainText(it, now)}</div>
+
+  const groups = new Map();
+  items.forEach(it => { if (!groups.has(it.boss)) groups.set(it.boss, []); groups.get(it.boss).push(it); });
+  const order = [...groups.entries()]
+    .map(([key, arr]) => ({ key, arr, min: Math.min(...arr.map(x => x.earliest)) }))
+    .sort((a, b) => a.min - b.min);
+
+  box.innerHTML = order.map(({ key, arr }) => {
+    const b = bossByKey[key];
+    const sprite = b.img
+      ? `<img class="pgsprite" src="${b.img}" alt="${escapeHtml(b.name)}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pgemoji',textContent:'${b.emoji}'}))">`
+      : `<span class="pgemoji">${b.emoji}</span>`;
+    const rows = arr.map(it => `<div class="prow ${it.st}">
+        <div class="pnm pix">CH${it.ch}</div>
+        <div class="pwhere">${escapeHtml(it.killer || "匿名")} 擊殺</div>
+        <div class="pcd pix">${remainText(it, now)}</div>
+      </div>`).join("");
+    return `<div class="pgroup">
+      <div class="pghead">${sprite}<span class="pgname">${escapeHtml(b.name)}</span><span class="pgtally">${arr.length} 個頻道</span></div>
+      ${rows}
     </div>`;
   }).join("");
 }
@@ -605,6 +656,29 @@ onValue(connectedRef, s => {
   else { el.textContent = "● 連線中…"; el.classList.remove("on"); }
 });
 onValue(killsRef, s => { kills = s.val() || {}; const now = serverNow(); renderHero(now); renderGrid(); renderPatrol(now); renderRecords(now); });
+
+/* ---------- message board ---------- */
+function renderBoard(list) {
+  const box = $("boardMsgs");
+  if (!list.length) { box.innerHTML = '<div class="empty">還沒有留言。打聲招呼、報個王吧！</div>'; return; }
+  box.innerHTML = list.map(m => `<div class="msg">
+    <div class="who">${escapeHtml(m.name || "匿名")}<time>${fmtHM(m.time || serverNow())}</time></div>
+    <div class="say">${escapeHtml(m.text || "")}</div>
+  </div>`).join("");
+  box.scrollTop = box.scrollHeight;
+}
+onValue(query(boardRef, limitToLast(100)), s => {
+  const list = []; s.forEach(c => list.push(c.val() || {})); renderBoard(list);
+});
+$("boardForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const input = $("boardInput");
+  const text = input.value.trim();
+  if (!text) return;
+  const name = ($("nick").value.trim() || "匿名").slice(0, 16);
+  try { await push(boardRef, { name, text: text.slice(0, 120), time: serverNow() }); input.value = ""; input.focus(); }
+  catch (err) { console.error(err); alert("留言沒送出去。檢查一下 Firebase 規則有沒有開放寫入。"); }
+});
 
 /* ---------- events ---------- */
 $("clearAllBtn").addEventListener("click", clearAll);
