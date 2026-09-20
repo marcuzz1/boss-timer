@@ -77,6 +77,11 @@
   .big-go{width:100%;background:var(--leaf);color:#06210f;border:2px solid var(--edge);border-radius:10px;padding:15px;font-size:16px;font-weight:900;box-shadow:0 3px 0 var(--edge);}
   .big-go:active{transform:translateY(3px);box-shadow:0 0 0 var(--edge);}
   .est{margin-top:10px;color:var(--grape);font-size:12px;} .est b{color:var(--cream);}
+  .fld input[type=time],.fld select{color-scheme:dark;}
+  .ovBox{margin-top:14px;background:var(--night2);border:2px solid var(--edge);border-radius:12px;padding:12px;}
+  .ovTitle{font-size:14px;font-weight:900;color:var(--gold);margin-bottom:10px;}
+  .ovTitle span{color:var(--grape);font-weight:500;font-size:12px;margin-left:8px;}
+  .ovBox input,.ovBox select{background:var(--panel);}
 
   /* grid */
   .legend{display:flex;flex-wrap:wrap;gap:10px;margin:14px 2px 8px;font-size:12px;color:var(--grape);}
@@ -187,9 +192,12 @@
     <div class="fld"><label for="killerInput">擊殺者</label><input id="killerInput" type="text" maxlength="16" placeholder="預設用你的 ID"></div>
     <button class="big-go" id="recordBtn" type="button">⚔ 記錄擊殺</button>
     <button class="big-go" id="delChBtn" type="button" style="background:#3a1c28;color:var(--ember);margin-top:10px;">🗑 刪除此頻道紀錄</button>
-    <div class="fld" style="margin-top:12px;"><label for="ovMode">校正時間（蓋掉原紀錄）</label><select id="ovMode"><option value="min">幾分鐘前擊殺</option><option value="time">擊殺時間（時:分）</option></select></div>
-    <div class="fld"><label id="ovLabel" for="ovMin">分鐘數</label><input id="ovMin" type="number" inputmode="numeric" min="0" max="1440" placeholder="例如 10"><input id="ovTime" type="time" style="display:none;"></div>
-    <button class="big-go" id="ovBtn" type="button" style="background:var(--gold);color:#4a2d00;">套用自訂時間</button>
+    <div class="ovBox">
+      <div class="ovTitle">🕓 校正時間<span>蓋掉這個頻道原本的紀錄</span></div>
+      <div class="fld"><label for="ovMode">方式</label><select id="ovMode"><option value="min">倒數幾分鐘</option><option value="time">指定擊殺時間</option></select></div>
+      <div class="fld"><label id="ovLabel" for="ovMin">倒數分鐘</label><input id="ovMin" type="number" inputmode="numeric" min="0" max="1440" placeholder="例如 5"><input id="ovTime" type="time" style="display:none;"></div>
+      <button class="big-go" id="ovBtn" type="button" style="background:var(--gold);color:#4a2d00;">套用自訂時間</button>
+    </div>
     <div class="est" id="estimate">現在記錄的話,預估重生：<b>—</b></div>
 
     <div class="legend">
@@ -257,7 +265,7 @@ const BOSSES = [
   { key:"hermit",   name:"巨居蟹",     emoji:"🦀", img:IMG+"king-clang.png",        map:"海龜沙灘",         respawnMin:45,  respawnMax:45 },
   { key:"balrog",   name:"巴洛古",     emoji:"👹", img:IMG+"balrog.png",            map:"被詛咒的寺院",     respawnMin:240, respawnMax:360 },
   { key:"treeking", name:"樹妖王",     emoji:"🌳", img:IMG+"deo.png",               map:"東方岩石山 V",     respawnMin:45,  respawnMax:45 },
-  { key:"test",     name:"測試王",     emoji:"🧪", img:"",                          map:"測試用",           respawnMin:1,   respawnMax:1  },
+  { key:"test",     name:"測試王",     emoji:"🧪", img:"",                          map:"測試用",           respawnMin:10,   respawnMax:10  },
 ];
 const bossByKey = Object.fromEntries(BOSSES.map(b => [b.key, b]));
 const CHANNELS = 60, SOON_MS = 5*60*1000, KILLS_PATH = "bossTimer/kills", MIN = 60*1000;
@@ -351,8 +359,8 @@ async function applyOverride(bossKey,chRaw){
   let killTime;
   if(mode==="min"){
     const mins=Number($("ovMin").value);
-    if($("ovMin").value===""||isNaN(mins)||mins<0){ alert("請輸入分鐘數（幾分鐘前擊殺）"); return; }
-    killTime=serverNow()-mins*MIN;
+    if($("ovMin").value===""||isNaN(mins)||mins<0){ alert("請輸入倒數分鐘數"); return; }
+    killTime=serverNow()+mins*MIN-b.respawnMin*MIN; // 讓最早重生 = 現在 + 倒數分鐘
   } else {
     const t=$("ovTime").value;
     if(!t){ alert("請選擇擊殺時間"); return; }
@@ -477,7 +485,7 @@ function syncOvMode(){
   const mode=$("ovMode").value;
   $("ovMin").style.display=mode==="min"?"":"none";
   $("ovTime").style.display=mode==="time"?"":"none";
-  $("ovLabel").textContent=mode==="min"?"分鐘數":"時間";
+  $("ovLabel").textContent=mode==="min"?"倒數分鐘":"時間";
 }
 $("ovMode").addEventListener("change",syncOvMode); syncOvMode();
 $("ovBtn").addEventListener("click",()=>applyOverride(currentBoss,$("chInput").value));

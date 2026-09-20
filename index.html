@@ -153,6 +153,13 @@
   .form input:focus-visible, .form select:focus-visible { border-color: var(--gold); }
   .estimate { margin-top: 9px; color: var(--grape); font-size: 12px; }
   .estimate b { color: var(--cream); }
+  .field input[type=time], .field select { color-scheme: dark; }
+  .ovBox { margin-top: 10px; background: var(--night2); border: 2px solid var(--edge); border-radius: 10px; padding: 10px 12px; }
+  .ovTitle { font-size: 13px; font-weight: 900; color: var(--gold); margin-bottom: 8px; }
+  .ovTitle span { color: var(--grape); font-weight: 500; font-size: 11px; margin-left: 8px; }
+  .ovGrid { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
+  .ovGrid .field input, .ovGrid .field select { background: var(--panel); }
+  .btn-gold { background: var(--gold); color: #4a2d00; }
 
   /* ---------- channel grid ---------- */
   .gridwrap { flex: 1; min-height: 0; }
@@ -310,17 +317,20 @@
           <button class="btn-go" id="recordBtn" type="button">記錄擊殺</button>
         </div>
         <button class="btn-danger" id="delChBtn" type="button" style="width:100%;margin-top:8px;">🗑 刪除此頻道紀錄（用上面選的 BOSS + 頻道）</button>
-        <div style="display:grid;grid-template-columns:1.3fr 1.1fr auto;gap:8px;align-items:end;margin-top:8px;">
-          <div class="field">
-            <label for="ovMode">校正時間（蓋掉原紀錄）</label>
-            <select id="ovMode"><option value="min">幾分鐘前擊殺</option><option value="time">擊殺時間（時:分）</option></select>
+        <div class="ovBox">
+          <div class="ovTitle">🕓 校正時間<span>蓋掉這個頻道原本的紀錄</span></div>
+          <div class="ovGrid">
+            <div class="field">
+              <label for="ovMode">方式</label>
+              <select id="ovMode"><option value="min">倒數幾分鐘</option><option value="time">指定擊殺時間</option></select>
+            </div>
+            <div class="field">
+              <label id="ovLabel" for="ovMin">倒數分鐘</label>
+              <input id="ovMin" type="number" min="0" max="1440" placeholder="例如 5">
+              <input id="ovTime" type="time" style="display:none;">
+            </div>
+            <button class="btn-gold" id="ovBtn" type="button">套用</button>
           </div>
-          <div class="field">
-            <label id="ovLabel" for="ovMin">分鐘數</label>
-            <input id="ovMin" type="number" min="0" max="1440" placeholder="例如 10">
-            <input id="ovTime" type="time" style="display:none;">
-          </div>
-          <button class="btn-primary" id="ovBtn" type="button">套用</button>
         </div>
         <div class="estimate" id="estimate">現在記錄的話,預估重生：<b>—</b></div>
       </section>
@@ -405,7 +415,7 @@ const BOSSES = [
   { key: "hermit",   name: "巨居蟹",     emoji: "🦀", img: IMG + "king-clang.png",        map: "海龜沙灘",         respawnMin: 45,  respawnMax: 45  },
   { key: "balrog",   name: "巴洛古",     emoji: "👹", img: IMG + "balrog.png",            map: "被詛咒的寺院",     respawnMin: 240, respawnMax: 360 },
   { key: "treeking", name: "樹妖王",     emoji: "🌳", img: IMG + "deo.png",               map: "東方岩石山 V",     respawnMin: 45,  respawnMax: 45  },
-  { key: "test",     name: "測試王",     emoji: "🧪", img: "",                            map: "測試用",           respawnMin: 1,   respawnMax: 1   },
+  { key: "test",     name: "測試王",     emoji: "🧪", img: "",                            map: "測試用",           respawnMin: 10,   respawnMax: 10   },
 ];
 const bossByKey = Object.fromEntries(BOSSES.map(b => [b.key, b]));
 
@@ -585,8 +595,8 @@ async function applyOverride(bossKey, chRaw, nick) {
   let killTime;
   if (mode === "min") {
     const mins = Number($("ovMin").value);
-    if ($("ovMin").value === "" || isNaN(mins) || mins < 0) { alert("請輸入分鐘數（幾分鐘前擊殺）"); return; }
-    killTime = serverNow() - mins * MIN;
+    if ($("ovMin").value === "" || isNaN(mins) || mins < 0) { alert("請輸入倒數分鐘數"); return; }
+    killTime = serverNow() + mins * MIN - b.respawnMin * MIN; // 讓最早重生 = 現在 + 倒數分鐘
   } else {
     const t = $("ovTime").value;
     if (!t) { alert("請選擇擊殺時間"); return; }
@@ -796,7 +806,7 @@ function syncOvMode() {
   const mode = $("ovMode").value;
   $("ovMin").style.display = mode === "min" ? "" : "none";
   $("ovTime").style.display = mode === "time" ? "" : "none";
-  $("ovLabel").textContent = mode === "min" ? "分鐘數" : "時間";
+  $("ovLabel").textContent = mode === "min" ? "倒數分鐘" : "時間";
 }
 $("ovMode").addEventListener("change", syncOvMode);
 syncOvMode();
