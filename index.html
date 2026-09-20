@@ -200,6 +200,8 @@
   .patrolDetach { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   .pipBtn { margin-left: auto; background: var(--panel2); color: var(--cream); border: 2px solid var(--edge); border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 700; box-shadow: 0 2px 0 var(--edge); cursor: pointer; }
   .pipBtn:active { transform: translateY(2px); box-shadow: 0 0 0 var(--edge); }
+  .hbtn-danger { margin-left: auto; background: #3a1c28; color: var(--ember); border: 2px solid var(--edge); border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 700; box-shadow: 0 2px 0 var(--edge); cursor: pointer; }
+  .hbtn-danger:active { transform: translateY(2px); box-shadow: 0 0 0 var(--edge); }
   .floatWin { position: fixed; top: 90px; left: 90px; width: 340px; height: 440px; z-index: 9999; background: var(--panel); border: 2px solid var(--gold); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; resize: both; box-shadow: 0 12px 34px rgba(0,0,0,.6); }
   .floatWin .fwHead { cursor: move; user-select: none; background: var(--panel2); padding: 8px 10px; display: flex; align-items: center; gap: 8px; font-weight: 900; color: var(--gold); }
   .floatWin .fwClose { margin-left: auto; background: transparent; border: none; color: var(--cream); font-size: 16px; font-weight: 900; cursor: pointer; }
@@ -343,7 +345,6 @@
           <button class="btn-go" id="recordBtn" type="button">記錄擊殺</button>
         </div>
         <button class="btn-danger" id="delChBtn" type="button" style="width:100%;margin-top:8px;">🗑 刪除此頻道紀錄（用上面選的 BOSS + 頻道）</button>
-        <button class="btn-danger" id="delBossBtn" type="button" style="width:100%;margin-top:8px;">🧹 清除此王全部頻道紀錄</button>
         <div class="ovBox">
           <div class="ovTitle">🕓 校正時間<span>蓋掉這個頻道原本的紀錄</span></div>
           <div class="ovGrid">
@@ -364,7 +365,7 @@
 
       <!-- Channel grid -->
       <section class="plate section gridwrap">
-        <div class="head"><h2>頻道 CH1–60</h2></div>
+        <div class="head"><h2>頻道 CH1–60</h2><button id="delBossBtn" class="hbtn-danger" type="button">🧹 清除此王全部</button></div>
         <div class="legend">
           <span><i class="chip overdue"></i>已重生</span>
           <span><i class="chip window"></i>重生區間</span>
