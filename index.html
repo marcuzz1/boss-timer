@@ -524,6 +524,10 @@ const customAudio = new Audio("usagi.mp3");
 let customOk = false;
 customAudio.addEventListener("canplaythrough", () => { customOk = true; });
 customAudio.addEventListener("error", () => { customOk = false; });
+const readyAudio = new Audio("three_gun.mp3");
+let readyOk = false;
+readyAudio.addEventListener("canplaythrough", () => { readyOk = true; });
+readyAudio.addEventListener("error", () => { readyOk = false; });
 function ensureAudio() {
   if (!audioCtx) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) audioCtx = new AC(); }
   if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
@@ -555,8 +559,7 @@ function checkAlarms(now) {
   }
 }
 // 活潑的「準備」提示音（跟已重生音效不同）
-function playReady() {
-  if (!soundOn) return;
+function synthReady() {
   ensureAudio(); if (!audioCtx) return;
   const ctx = audioCtx, t0 = ctx.currentTime;
   const seq = [[523,0,.12],[659,.12,.12],[784,.24,.12],[1047,.36,.18],[880,.58,.1],[1047,.70,.1],[1319,.82,.32]];
@@ -569,6 +572,11 @@ function playReady() {
     g.gain.exponentialRampToValueAtTime(.001, t0 + st + du);
     o.start(t0 + st); o.stop(t0 + st + du + .03);
   });
+}
+function playReady() {
+  if (!soundOn) return;
+  if (readyOk) { readyAudio.currentTime = 0; const p = readyAudio.play(); if (p) p.catch(() => synthReady()); }
+  else synthReady();
 }
 // 一輪結束(巡查清空)後,新頻道進巡查 → 於重生前 3 分鐘提醒準備
 let roundWasEmpty = null, roundRemindAt = null;
