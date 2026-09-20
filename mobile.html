@@ -194,6 +194,7 @@
     <div class="fld"><label for="killerInput">擊殺者</label><input id="killerInput" type="text" maxlength="16" placeholder="預設用你的 ID"></div>
     <button class="big-go" id="recordBtn" type="button">⚔ 記錄擊殺</button>
     <button class="big-go" id="delChBtn" type="button" style="background:#3a1c28;color:var(--ember);margin-top:10px;">🗑 刪除此頻道紀錄</button>
+    <button class="big-go" id="delBossBtn" type="button" style="background:#3a1c28;color:var(--ember);margin-top:10px;">🧹 清除此王全部頻道紀錄</button>
     <div class="ovBox">
       <div class="ovTitle">🕓 校正時間<span>蓋掉這個頻道原本的紀錄</span></div>
       <div class="fld"><label for="ovMode">方式</label><select id="ovMode"><option value="min">倒數幾分鐘</option><option value="time">指定擊殺時間</option></select></div>
@@ -355,6 +356,14 @@ async function recordKill(bossKey,ch){
 }
 async function deleteKill(id){ try{ await remove(ref(db,`${KILLS_PATH}/${id}`)); }catch(err){ console.error(err); alert("刪不掉。"); } }
 async function clearAll(){ if(!confirm("要清掉全部紀錄嗎？")) return; try{ await remove(killsRef); }catch(err){ console.error(err); alert("清不掉。"); } }
+async function clearBoss(bossKey){
+  const b=bossByKey[bossKey];
+  const ids=Object.keys(kills).filter(id=>kills[id]&&kills[id].boss===bossKey);
+  if(!ids.length){ alert(`${b.name} 目前沒有任何紀錄`); return; }
+  if(!confirm(`確定清除「${b.name}」全部 ${ids.length} 個頻道的紀錄嗎？`)) return;
+  try{ await Promise.all(ids.map(id=>remove(ref(db,`${KILLS_PATH}/${id}`)))); }
+  catch(err){ console.error(err); alert("清除失敗,請確認 Firebase 規則。"); }
+}
 async function applyOverride(bossKey,chRaw){
   const ch=Number(chRaw);
   if(!ch||ch<1||ch>CHANNELS){ alert("請先在上面「頻道 CH」輸入頻道 (1~60)"); return; }
@@ -491,6 +500,7 @@ $("delChBtn").addEventListener("click",()=>{
   if(!confirm(`確定刪除「${b.name} CH${ch}」的計時紀錄嗎？`)) return;
   deleteKill(id);
 });
+$("delBossBtn").addEventListener("click",()=>clearBoss(currentBoss));
 function syncOvMode(){
   const mode=$("ovMode").value;
   $("ovMin").style.display=mode==="min"?"":"none";

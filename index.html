@@ -343,6 +343,7 @@
           <button class="btn-go" id="recordBtn" type="button">記錄擊殺</button>
         </div>
         <button class="btn-danger" id="delChBtn" type="button" style="width:100%;margin-top:8px;">🗑 刪除此頻道紀錄（用上面選的 BOSS + 頻道）</button>
+        <button class="btn-danger" id="delBossBtn" type="button" style="width:100%;margin-top:8px;">🧹 清除此王全部頻道紀錄</button>
         <div class="ovBox">
           <div class="ovTitle">🕓 校正時間<span>蓋掉這個頻道原本的紀錄</span></div>
           <div class="ovGrid">
@@ -627,6 +628,15 @@ async function clearAll() {
   if (!confirm("要清掉全部紀錄嗎？")) return;
   try { await remove(killsRef); }
   catch (err) { console.error(err); alert("清不掉。檢查一下 Firebase 規則。"); }
+}
+// 清除某隻王所有頻道的紀錄
+async function clearBoss(bossKey) {
+  const b = bossByKey[bossKey];
+  const ids = Object.keys(kills).filter(id => kills[id] && kills[id].boss === bossKey);
+  if (!ids.length) { alert(`${b.name} 目前沒有任何紀錄`); return; }
+  if (!confirm(`確定清除「${b.name}」全部 ${ids.length} 個頻道的紀錄嗎？`)) return;
+  try { await Promise.all(ids.map(id => remove(ref(db, `${KILLS_PATH}/${id}`)))); }
+  catch (err) { console.error(err); alert("清除失敗,請確認 Firebase 規則。"); }
 }
 // 自訂時間蓋掉原紀錄：mode=min 幾分鐘前擊殺 / mode=time 擊殺時間(時:分)
 async function applyOverride(bossKey, chRaw, nick) {
@@ -914,6 +924,7 @@ $("delChBtn").addEventListener("click", () => {
   if (!confirm(`確定刪除「${b.name} CH${ch}」的計時紀錄嗎？`)) return;
   deleteKill(id);
 });
+$("delBossBtn").addEventListener("click", () => clearBoss(currentBoss));
 
 function syncOvMode() {
   const mode = $("ovMode").value;
