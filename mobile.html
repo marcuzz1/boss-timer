@@ -105,7 +105,7 @@
   .prow{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;background:var(--night2);border:2px solid var(--edge);border-radius:12px;padding:16px;}
   .prow + .prow{margin-top:12px;}
   .prow .info{min-width:0;}
-  .prow .ch{font-size:22px;font-weight:800;font-family:"PMingLiU","新細明體",serif;} .prow .who{font-size:15px;color:var(--grape);margin-top:3px;} .prow .cd{font-size:30px;}
+  .prow .ch{font-size:22px;font-weight:800;font-family:"PMingLiU","新細明體",serif;} .prow .who{font-size:13px;color:var(--grape);margin-top:3px;} .prow .cd{font-size:30px;}
   .prow.soon .cd{color:var(--gold);} .prow.window .cd{color:var(--violet);} .prow.overdue .cd{color:var(--ember);}
   .prow .kill{background:var(--leaf);color:#06210f;border:2px solid var(--edge);border-radius:10px;padding:16px 18px;font-size:18px;font-weight:900;box-shadow:0 3px 0 var(--edge);white-space:nowrap;}
   .prow .kill:active{transform:translateY(3px);box-shadow:0 0 0 var(--edge);}
@@ -120,11 +120,11 @@
   .rec .del{background:#3a1c28;color:var(--ember);border:2px solid var(--edge);border-radius:8px;padding:8px 10px;font-size:12px;font-weight:700;}
 
   /* board */
-  .msgs{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;}
+  .msgs{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;padding-bottom:76px;}
   .msg{background:var(--night2);border:2px solid var(--edge);border-radius:10px;padding:9px 11px;}
   .msg .who{font-size:12px;color:var(--gold);font-weight:700;} .msg .who time{color:var(--grape);font-weight:500;margin-left:6px;}
   .msg .say{font-size:14px;line-height:1.45;word-break:break-word;margin-top:3px;}
-  .bform{position:sticky;bottom:calc(var(--tabh) + env(safe-area-inset-bottom));background:#000;padding:8px 0;display:grid;grid-template-columns:96px 1fr auto;gap:7px;}
+  .bform{position:fixed;left:0;right:0;bottom:calc(var(--tabh) + env(safe-area-inset-bottom));z-index:25;background:#000;border-top:1px solid var(--edge);padding:8px 12px;display:grid;grid-template-columns:96px 1fr auto;gap:7px;}
   .bform input{background:var(--night2);color:var(--cream);border:2px solid var(--edge);border-radius:9px;padding:12px 11px;font-size:15px;outline:none;min-width:0;}
   .bform input:focus{border-color:var(--gold);}
   .bform button{background:var(--leaf);color:#06210f;border:2px solid var(--edge);border-radius:9px;padding:0 16px;font-size:15px;font-weight:900;}
@@ -155,6 +155,7 @@
   <div class="ttl">巡王計時器</div>
   <div class="clock pix" id="clock">--:--:--</div>
   <button class="sbtn" id="soundBtn" type="button" aria-label="音效開關">🔊</button>
+  <a class="sbtn" href="index.html?pc=1" aria-label="電腦版" style="text-decoration:none;">🖥</a>
   <div class="conn" id="conn" aria-label="連線狀態"></div>
 </div>
 
