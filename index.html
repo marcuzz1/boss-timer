@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BOSS 房間計時器</title>
+<title>BOSS 計時器</title>
 <style>
   * { box-sizing: border-box; }
 
@@ -54,12 +54,6 @@
   .conn { margin-top: 6px; font-weight: 800; font-size: 14px; color: var(--orange); }
   .conn.on { color: var(--green); }
 
-  /* ---------- room ---------- */
-  .roomGrid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-  }
   .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 700; }
   input, select {
     width: 100%;
@@ -73,27 +67,25 @@
   }
   input:focus, select:focus { border-color: var(--accent); }
 
-  .btnRow { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; align-items: center; }
   button {
     border: none; border-radius: 9px; padding: 11px 16px;
     font-weight: 800; cursor: pointer; font-size: 14px; color: #fff;
   }
   .btn-primary { background: var(--accent); }
   .btn-green { background: var(--green); color: #08130d; }
-  .btn-gray { background: #46586a; }
   .btn-red { background: var(--red); }
-  button:disabled { opacity: .45; cursor: not-allowed; }
-
-  .roomStatus { margin-left: auto; color: var(--muted); font-size: 13px; font-weight: 700; }
-  .roomStatus b { color: #cfe0ee; }
 
   .sectionTitle { font-size: 18px; font-weight: 900; margin: 0 0 4px; }
   .sectionSub { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
 
+  /* ---------- nickname bar ---------- */
+  .nickBar { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; }
+  .nickBar .field { flex: 0 1 240px; }
+
   /* ---------- boss list ---------- */
   .bossList { display: flex; flex-wrap: wrap; gap: 10px; }
   .bossCard {
-    flex: 1 1 160px;
+    flex: 1 1 150px;
     background: var(--panel2);
     border: 1px solid var(--line);
     border-radius: 12px;
@@ -109,9 +101,13 @@
     background: #182640;
   }
   .bossCard .emoji { font-size: 34px; line-height: 1; }
+  .bossCard .bimg { width: 46px; height: 46px; object-fit: contain; image-rendering: -webkit-optimize-contrast; }
   .bossCard .bname { font-weight: 900; font-size: 16px; margin-top: 6px; }
   .bossCard .brt { font-size: 12px; color: var(--muted); margin-top: 3px; }
-  .bossCard .bcount { font-size: 12px; color: var(--green); margin-top: 4px; font-weight: 700; }
+  .bossCard .bmap { font-size: 11px; color: #6f8091; margin-top: 2px; }
+  .bossCard .bcount { font-size: 12px; color: var(--green); margin-top: 4px; font-weight: 700; min-height: 14px; }
+
+  .selBossImg { width: 52px; height: 52px; object-fit: contain; margin-right: 4px; }
 
   /* ---------- record form ---------- */
   .recordGrid { display: grid; grid-template-columns: 1.4fr 1fr 1.4fr auto; gap: 10px; align-items: end; }
@@ -130,9 +126,10 @@
   .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
   .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
-  .dot.recorded { background: var(--red); }
-  .dot.counting { background: var(--green); }
+  .dot.overdue { background: var(--red); }
+  .dot.window { background: var(--purple); }
   .dot.soon { background: var(--orange); }
+  .dot.counting { background: var(--green); }
   .dot.idle { background: #46586a; }
 
   .grid { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px; }
@@ -151,8 +148,10 @@
   .cell.counting .cd { color: var(--green); }
   .cell.soon { border-color: var(--orange); background: #241d10; }
   .cell.soon .cd { color: var(--orange); }
-  .cell.recorded { border-color: var(--red); background: #261414; animation: pulse 1.4s infinite; }
-  .cell.recorded .cd { color: var(--red); }
+  .cell.window { border-color: var(--purple); background: #1c1730; }
+  .cell.window .cd { color: var(--purple); }
+  .cell.overdue { border-color: var(--red); background: #261414; animation: pulse 1.4s infinite; }
+  .cell.overdue .cd { color: var(--red); }
   @keyframes pulse { 0%,100%{ box-shadow: 0 0 0 0 rgba(239,91,91,.35);} 50%{ box-shadow: 0 0 0 5px rgba(239,91,91,0);} }
   .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
 
@@ -163,13 +162,16 @@
     background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px;
   }
   .patrolItem .pemoji { font-size: 22px; }
+  .patrolItem .pimg { width: 30px; height: 30px; object-fit: contain; }
   .patrolItem .pname { font-weight: 800; }
   .patrolItem .pch { color: var(--muted); font-size: 13px; }
   .patrolItem .pcd { font-family: Consolas, monospace; font-weight: 900; font-size: 18px; }
   .patrolItem.soon { border-color: var(--orange); }
   .patrolItem.soon .pcd { color: var(--orange); }
-  .patrolItem.recorded { border-color: var(--red); }
-  .patrolItem.recorded .pcd { color: var(--red); }
+  .patrolItem.window { border-color: var(--purple); }
+  .patrolItem.window .pcd { color: var(--purple); }
+  .patrolItem.overdue { border-color: var(--red); }
+  .patrolItem.overdue .pcd { color: var(--red); }
   .empty { color: var(--muted); text-align: center; padding: 18px; }
 
   /* ---------- records table ---------- */
@@ -180,8 +182,8 @@
   td .stateTag { padding: 2px 8px; border-radius: 999px; font-weight: 800; font-size: 12px; }
   .tag-counting { background: rgba(46,205,136,.18); color: var(--green); }
   .tag-soon { background: rgba(246,164,50,.18); color: var(--orange); }
-  .tag-recorded { background: rgba(239,91,91,.18); color: var(--red); }
-  .tag-idle { background: rgba(70,88,106,.3); color: var(--muted); }
+  .tag-window { background: rgba(157,123,255,.18); color: var(--purple); }
+  .tag-overdue { background: rgba(239,91,91,.18); color: var(--red); }
   .delBtn { background: #3a2530; color: var(--red); padding: 6px 10px; font-size: 12px; }
 
   .count-pill { background: #0f1822; border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; font-size: 13px; color: var(--muted); font-weight: 700; }
@@ -190,7 +192,6 @@
   .footNote { color: var(--muted); font-size: 12px; text-align: center; margin-top: 4px; }
 
   @media (max-width: 900px) {
-    .roomGrid { grid-template-columns: 1fr; }
     .recordGrid { grid-template-columns: 1fr 1fr; }
     .grid { grid-template-columns: repeat(6, minmax(0,1fr)); }
   }
@@ -206,41 +207,26 @@
 
   <!-- Header -->
   <div class="panel header">
-    <h1>⚔️ BOSS 房間計時器</h1>
-    <div class="sub">建立房間・記錄擊殺・多人同步・即時共享</div>
+    <h1>⚔️ BOSS 計時器</h1>
+    <div class="sub">記錄擊殺・多人同步・即時共享</div>
     <div class="clock" id="clock">--:--:--</div>
     <div class="conn" id="conn">● 尚未連線</div>
   </div>
 
-  <!-- Room -->
+  <!-- Nickname -->
   <div class="panel">
-    <div class="sectionTitle">🚪 房間</div>
-    <div class="sectionSub">輸入相同「房間密碼」的人會看到同一份紀錄，把密碼傳給朋友即可一起巡王。</div>
-    <div class="roomGrid">
+    <div class="nickBar">
       <div class="field">
-        <label>你的暱稱</label>
+        <label>你的暱稱（記錄擊殺時使用）</label>
         <input id="nick" type="text" maxlength="16" placeholder="輸入暱稱">
       </div>
-      <div class="field">
-        <label>房間密碼</label>
-        <input id="roomPw" type="text" maxlength="24" placeholder="例如：mogu123">
-      </div>
-      <div class="field">
-        <label>房間名稱（選填）</label>
-        <input id="roomName" type="text" maxlength="24" placeholder="例如：菇菇小隊">
-      </div>
-    </div>
-    <div class="btnRow">
-      <button class="btn-primary" id="joinBtn">＋ 建立 / 加入房間</button>
-      <button class="btn-gray" id="leaveBtn" disabled>離開房間</button>
-      <div class="roomStatus" id="roomStatus">身份：<b>訪客</b> ｜ 房間：<b>—</b></div>
     </div>
   </div>
 
   <!-- Boss list -->
   <div class="panel">
     <div class="sectionTitle">🐾 BOSS 清單</div>
-    <div class="sectionSub">點卡片切換目前追蹤的 BOSS，下方頻道格會顯示該 BOSS 的狀態。</div>
+    <div class="sectionSub">點圖片直接切換目前追蹤的 BOSS,下方頻道格會顯示該 BOSS 的狀態。</div>
     <div class="bossList" id="bossList"></div>
   </div>
 
@@ -249,7 +235,9 @@
     <div class="sectionTitle">🩸 BOSS 擊殺</div>
     <div class="sectionSub">選擇 BOSS・輸入頻道・記錄擊殺</div>
     <div class="tracking">
+      <img class="selBossImg" id="selBossImg" alt="">
       <div><div class="k">目前追蹤</div><div class="v boss" id="trackName">—</div></div>
+      <div><div class="k">出沒地圖</div><div class="v" id="trackMap" style="font-size:15px;">—</div></div>
       <div><div class="k">重生時間</div><div class="v" id="trackRt">—</div></div>
     </div>
     <div class="recordGrid">
@@ -274,7 +262,8 @@
   <div class="panel">
     <div class="sectionTitle">📺 頻道選擇（CH1～CH60）</div>
     <div class="legend">
-      <span><i class="dot recorded"></i>已重生 / 待確認</span>
+      <span><i class="dot overdue"></i>已過重生</span>
+      <span><i class="dot window"></i>重生區間</span>
       <span><i class="dot soon"></i>即將重生</span>
       <span><i class="dot counting"></i>計時中</span>
       <span><i class="dot idle"></i>空閒</span>
@@ -289,14 +278,14 @@
       <div class="sectionTitle" style="margin:0;">🎯 優先巡查</div>
       <span class="count-pill" id="patrolCount">0 筆</span>
     </div>
-    <div class="sectionSub">已重生或即將重生的頻道會排在最前面。</div>
+    <div class="sectionSub">已進入重生區間、即將重生或已過重生的頻道會排在最前面。</div>
     <div class="patrolList" id="patrolList"><div class="empty">目前沒有即將重生的頻道</div></div>
   </div>
 
   <!-- Records table -->
   <div class="panel">
     <div class="titleRow">
-      <div class="sectionTitle" style="margin:0;">▤ 房間全部紀錄</div>
+      <div class="sectionTitle" style="margin:0;">▤ 全部紀錄</div>
       <span class="count-pill" id="recordCount">0 筆</span>
       <button class="btn-red" id="clearAllBtn" style="margin-left:auto;">全部清除</button>
     </div>
@@ -308,7 +297,7 @@
           </tr>
         </thead>
         <tbody id="recordBody">
-          <tr><td colspan="7" class="empty">加入房間後，這裡會同步顯示大家的紀錄</td></tr>
+          <tr><td colspan="7" class="empty">記錄一筆擊殺後,這裡會即時同步顯示大家的紀錄</td></tr>
         </tbody>
       </table>
     </div>
@@ -320,7 +309,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
 import {
-  getDatabase, ref, onValue, set, update, remove
+  getDatabase, ref, onValue, set, remove
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -337,62 +326,86 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-/* ===== 設定：BOSS 與重生時間（分鐘）。可自行調整 respawnMin ===== */
+/* ===== 設定：BOSS 與重生時間（分鐘）=====
+   respawnMin === respawnMax 代表固定時間；不同代表浮動區間。 */
+const IMG = "https://maplebossteam.com/assets/bosses/";
 const BOSSES = [
-  { key: "zombie",  name: "殭屍菇菇", emoji: "🧟", respawnMin: 60 },
-  { key: "mushking",name: "蘑菇王",   emoji: "🍄", respawnMin: 60 },
-  { key: "blackcroc",name: "黑鱷魚王", emoji: "🐊", respawnMin: 60 },
-  { key: "monkey",  name: "猴王",     emoji: "🐒", respawnMin: 60 },
-  { key: "hermit",  name: "寄居蟹",   emoji: "🦀", respawnMin: 60 },
+  { key: "zombie",   name: "殭屍蘑菇王", emoji: "🧟", img: IMG + "zombie-mushmom.png",    map: "螞蟻礦坑隱藏地圖",   respawnMin: 40,  respawnMax: 60  },
+  { key: "mushking", name: "蘑菇王",     emoji: "🍄", img: IMG + "mushmom.png",           map: "菇菇王出沒地",       respawnMin: 40,  respawnMax: 60  },
+  { key: "blackcroc",name: "沼澤巨鱷",   emoji: "🐊", img: IMG + "swamp-croc.png",        map: "鱷魚潭 I / II",      respawnMin: 45,  respawnMax: 45  },
+  { key: "monkey",   name: "殭屍猴王",   emoji: "🐒", img: IMG + "zombie-lupin-king.png", map: "巫婆森林 I / II",    respawnMin: 45,  respawnMax: 45  },
+  { key: "hermit",   name: "巨居蟹",     emoji: "🦀", img: IMG + "king-clang.png",        map: "海龜沙灘",           respawnMin: 45,  respawnMax: 45  },
+  { key: "balrog",   name: "巴洛古",     emoji: "👹", img: IMG + "balrog.png",            map: "被詛咒的寺院",       respawnMin: 240, respawnMax: 360 },
+  { key: "treeking", name: "樹妖王",     emoji: "🌳", img: IMG + "deo.png",               map: "東方岩石山 V",       respawnMin: 45,  respawnMax: 45  },
 ];
 const bossByKey = Object.fromEntries(BOSSES.map(b => [b.key, b]));
 
 const CHANNELS = 60;
 const SOON_MS = 5 * 60 * 1000;   // 「即將重生」警示區間
+const KILLS_PATH = "bossTimer/kills";
 
+const killsRef = ref(db, KILLS_PATH);
 const serverOffsetRef = ref(db, ".info/serverTimeOffset");
 const connectedRef = ref(db, ".info/connected");
 
 let serverTimeOffset = 0;
 let currentBoss = BOSSES[0].key;
-let currentRoom = null;          // sanitized room key
-let roomUnsub = null;
-let kills = {};                  // { "bossKey_ch": {boss, bossName, ch, killer, killTime, respawnAt} }
+let kills = {};                  // { "bossKey_ch": {boss, bossName, ch, killer, killTime} }
 let selectedCh = null;
 
 const serverNow = () => Date.now() + serverTimeOffset;
+const killId = (bossKey, ch) => `${bossKey}_${ch}`;
+const MIN = 60 * 1000;
 
 /* ---------- helpers ---------- */
-function roomKeyOf(pw) {
-  return "r_" + pw.trim().replace(/[.#$/\[\]\s]/g, "_");
+function isFloating(b) { return b.respawnMin !== b.respawnMax; }
+function rtLabel(b) {
+  return isFloating(b) ? `${b.respawnMin}~${b.respawnMax} 分` : `${b.respawnMin} 分`;
 }
-function killId(bossKey, ch) { return `${bossKey}_${ch}`; }
+function windowOf(item) {
+  const b = bossByKey[item.boss];
+  return {
+    earliest: item.killTime + b.respawnMin * MIN,
+    latest:   item.killTime + b.respawnMax * MIN
+  };
+}
 
 function fmtClock(ts) {
-  const d = new Date(ts);
-  const p = n => String(n).padStart(2, "0");
+  const d = new Date(ts), p = n => String(n).padStart(2, "0");
   return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
 function fmtHM(ts) {
-  const d = new Date(ts);
-  const p = n => String(n).padStart(2, "0");
+  const d = new Date(ts), p = n => String(n).padStart(2, "0");
   return `${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 function fmtCountdown(ms) {
   if (ms <= 0) return "00:00";
   const s = Math.ceil(ms / 1000);
-  const m = Math.floor(s / 60);
   const p = n => String(n).padStart(2, "0");
-  return `${p(m)}:${p(s % 60)}`;
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return h > 0 ? `${p(h)}:${p(m)}:${p(sec)}` : `${p(m)}:${p(sec)}`;
 }
+
 function stateOf(item, now) {
-  if (!item || !item.respawnAt) return "idle";
-  const remain = item.respawnAt - now;
-  if (remain <= 0) return "recorded";      // 已重生 / 待確認
-  if (remain <= SOON_MS) return "soon";    // 即將重生
-  return "counting";                       // 計時中
+  if (!item || !bossByKey[item.boss]) return "idle";
+  const { earliest, latest } = windowOf(item);
+  if (now >= latest) return "overdue";      // 已過最晚重生時間
+  if (now >= earliest) return "window";     // 重生區間內（浮動王）
+  if (earliest - now <= SOON_MS) return "soon";
+  return "counting";
 }
-const STATE_LABEL = { idle: "空閒", counting: "計時中", soon: "即將重生", recorded: "已重生" };
+const STATE_LABEL = { idle: "空閒", counting: "計時中", soon: "即將重生", window: "重生區間", overdue: "已過重生" };
+
+// 頻道格 / 表格顯示的剩餘文字
+function remainText(item, now) {
+  const st = stateOf(item, now);
+  const { earliest, latest } = windowOf(item);
+  if (st === "overdue") return "已重生";
+  if (st === "window")  return "區間 " + fmtCountdown(latest - now);
+  return fmtCountdown(earliest - now);
+}
 
 /* ---------- build static UI ---------- */
 function buildBossList() {
@@ -405,16 +418,25 @@ function buildBossList() {
     card.className = "bossCard";
     card.id = `boss-${b.key}`;
     card.innerHTML = `
-      <div class="emoji">${b.emoji}</div>
+      <img class="bimg" id="bimg-${b.key}" src="${b.img}" alt="${b.name}">
+      <span class="emoji" id="bemoji-${b.key}" style="display:none;">${b.emoji}</span>
       <div class="bname">${b.name}</div>
-      <div class="brt">重生 ${b.respawnMin} 分</div>
+      <div class="brt">重生 ${rtLabel(b)}</div>
+      <div class="bmap">${b.map}</div>
       <div class="bcount" id="bosscount-${b.key}"></div>`;
     card.addEventListener("click", () => setCurrentBoss(b.key));
     list.appendChild(card);
 
+    const bimg = card.querySelector(`#bimg-${b.key}`);
+    bimg.addEventListener("error", () => {
+      bimg.style.display = "none";
+      const em = document.getElementById(`bemoji-${b.key}`);
+      if (em) em.style.display = "inline";
+    });
+
     const opt = document.createElement("option");
     opt.value = b.key;
-    opt.textContent = `${b.emoji} ${b.name}`;
+    opt.textContent = b.name;
     sel.appendChild(opt);
   });
   sel.value = currentBoss;
@@ -444,102 +466,64 @@ function setCurrentBoss(key) {
   BOSSES.forEach(b =>
     document.getElementById(`boss-${b.key}`).classList.toggle("active", b.key === key));
   const b = bossByKey[key];
-  document.getElementById("trackName").textContent = `${b.emoji} ${b.name}`;
-  document.getElementById("trackRt").textContent = `${b.respawnMin} 分`;
+  const selImg = document.getElementById("selBossImg");
+  selImg.src = b.img;
+  selImg.alt = b.name;
+  selImg.style.display = "";
+  selImg.onerror = () => { selImg.style.display = "none"; };
+  document.getElementById("trackName").textContent = b.name;
+  document.getElementById("trackMap").textContent = b.map;
+  document.getElementById("trackRt").textContent = rtLabel(b);
   updateEstimate();
   renderGrid();
 }
 
 function updateEstimate() {
   const b = bossByKey[currentBoss];
-  const est = serverNow() + b.respawnMin * 60 * 1000;
-  document.getElementById("estimate").innerHTML =
-    `若現在記錄，預估重生時間：<b>${fmtHM(est)}</b>（${b.respawnMin} 分後）`;
-}
-
-/* ---------- Firebase: room ---------- */
-function joinRoom() {
-  const pw = document.getElementById("roomPw").value.trim();
-  const nick = document.getElementById("nick").value.trim();
-  if (!pw) { alert("請輸入房間密碼"); return; }
-  if (!nick) { alert("請輸入暱稱"); return; }
-
-  localStorage.setItem("bt_nick", nick);
-  const key = roomKeyOf(pw);
-  const roomName = document.getElementById("roomName").value.trim();
-
-  // 建立 / 更新房間名稱（不覆蓋既有紀錄）
-  update(ref(db, `rooms/${key}/meta`), {
-    name: roomName || pw,
-    updatedAt: serverNow()
-  }).catch(err => console.error(err));
-
-  if (roomUnsub) roomUnsub();
-  currentRoom = key;
-
-  const killsRef = ref(db, `rooms/${key}/kills`);
-  roomUnsub = onValue(killsRef, snap => {
-    kills = snap.val() || {};
-    renderAll();
-  });
-
-  onValue(ref(db, `rooms/${key}/meta/name`), snap => {
-    document.getElementById("roomStatus").innerHTML =
-      `身份：<b>${escapeHtml(nick)}</b> ｜ 房間：<b>${escapeHtml(snap.val() || pw)}</b>`;
-  });
-
-  document.getElementById("leaveBtn").disabled = false;
-  document.getElementById("joinBtn").textContent = "重新加入房間";
-}
-
-function leaveRoom() {
-  if (roomUnsub) { roomUnsub(); roomUnsub = null; }
-  currentRoom = null;
-  kills = {};
-  document.getElementById("leaveBtn").disabled = true;
-  document.getElementById("joinBtn").textContent = "＋ 建立 / 加入房間";
-  document.getElementById("roomStatus").innerHTML = "身份：<b>訪客</b> ｜ 房間：<b>—</b>";
-  renderAll();
+  const now = serverNow();
+  const est = document.getElementById("estimate");
+  if (isFloating(b)) {
+    const e = now + b.respawnMin * MIN, l = now + b.respawnMax * MIN;
+    est.innerHTML = `若現在記錄,預估重生：<b>${fmtHM(e)} ~ ${fmtHM(l)}</b>（${b.respawnMin}~${b.respawnMax} 分浮動）`;
+  } else {
+    const t = now + b.respawnMin * MIN;
+    est.innerHTML = `若現在記錄,預估重生：<b>${fmtHM(t)}</b>（${b.respawnMin} 分後）`;
+  }
 }
 
 /* ---------- Firebase: kills ---------- */
 async function recordKill(bossKey, ch) {
-  if (!currentRoom) { alert("請先加入房間"); return; }
   ch = Number(ch);
   if (!ch || ch < 1 || ch > CHANNELS) { alert("請輸入 1~60 的頻道"); return; }
 
   const b = bossByKey[bossKey];
   const nick = document.getElementById("nick").value.trim();
   const killer = (document.getElementById("killerInput").value.trim() || nick || "匿名").slice(0, 16);
-  const now = serverNow();
 
   try {
-    await set(ref(db, `rooms/${currentRoom}/kills/${killId(bossKey, ch)}`), {
+    await set(ref(db, `${KILLS_PATH}/${killId(bossKey, ch)}`), {
       boss: bossKey,
       bossName: b.name,
       ch,
       killer,
-      killTime: now,
-      respawnAt: now + b.respawnMin * 60 * 1000
+      killTime: serverNow()
     });
     selectedCh = null;
   } catch (err) {
     console.error(err);
-    alert("寫入失敗，請確認 Firebase 規則允許寫入。");
+    alert("寫入失敗,請確認 Firebase 規則允許寫入。");
   }
 }
 
 async function deleteKill(id) {
-  if (!currentRoom) return;
-  try { await remove(ref(db, `rooms/${currentRoom}/kills/${id}`)); }
-  catch (err) { console.error(err); alert("刪除失敗，請確認 Firebase 規則。"); }
+  try { await remove(ref(db, `${KILLS_PATH}/${id}`)); }
+  catch (err) { console.error(err); alert("刪除失敗,請確認 Firebase 規則。"); }
 }
 
 async function clearAll() {
-  if (!currentRoom) { alert("請先加入房間"); return; }
-  if (!confirm("確定要清除本房間全部紀錄嗎？")) return;
-  try { await remove(ref(db, `rooms/${currentRoom}/kills`)); }
-  catch (err) { console.error(err); alert("清除失敗，請確認 Firebase 規則。"); }
+  if (!confirm("確定要清除全部紀錄嗎？")) return;
+  try { await remove(killsRef); }
+  catch (err) { console.error(err); alert("清除失敗,請確認 Firebase 規則。"); }
 }
 
 /* ---------- render ---------- */
@@ -556,15 +540,12 @@ function renderGrid() {
     const item = kills[killId(currentBoss, i)];
     const st = stateOf(item, now);
 
-    cell.classList.remove("counting", "soon", "recorded", "selected");
+    cell.classList.remove("counting", "soon", "window", "overdue", "selected");
     if (st !== "idle") cell.classList.add(st);
     if (selectedCh === i) cell.classList.add("selected");
 
-    if (st === "idle") cd.textContent = "";
-    else if (st === "recorded") cd.textContent = "重生";
-    else cd.textContent = fmtCountdown(item.respawnAt - now);
+    cd.textContent = st === "idle" ? "" : remainText(item, now);
   }
-  // per-boss active count
   BOSSES.forEach(b => {
     let c = 0;
     for (let i = 1; i <= CHANNELS; i++) if (kills[killId(b.key, i)]) c++;
@@ -576,10 +557,10 @@ function renderGrid() {
 function renderPatrol() {
   const now = serverNow();
   const items = Object.values(kills)
-    .filter(it => it && it.respawnAt)
-    .map(it => ({ ...it, remain: it.respawnAt - now, st: stateOf(it, now) }))
-    .filter(it => it.st === "recorded" || it.st === "soon")
-    .sort((a, b) => a.remain - b.remain);
+    .filter(it => it && bossByKey[it.boss])
+    .map(it => ({ ...it, st: stateOf(it, now), earliest: windowOf(it).earliest }))
+    .filter(it => it.st === "overdue" || it.st === "window" || it.st === "soon")
+    .sort((a, b) => a.earliest - b.earliest);
 
   document.getElementById("patrolCount").textContent = `${items.length} 筆`;
   const box = document.getElementById("patrolList");
@@ -589,14 +570,16 @@ function renderPatrol() {
     return;
   }
   box.innerHTML = items.map(it => {
-    const b = bossByKey[it.boss] || { emoji: "❔", name: it.bossName || "?" };
-    const cd = it.st === "recorded" ? "已重生" : fmtCountdown(it.remain);
+    const b = bossByKey[it.boss];
+    const { earliest, latest } = windowOf(it);
+    const rtInfo = isFloating(b) ? `${fmtHM(earliest)}~${fmtHM(latest)}` : fmtHM(earliest);
     return `<div class="patrolItem ${it.st}">
-      <div class="pemoji">${b.emoji}</div>
+      <img class="pimg" src="${b.img}" alt="${escapeHtml(b.name)}"
+           onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pemoji',textContent:'${b.emoji}'}))">
       <div><div class="pname">${escapeHtml(b.name)}</div>
       <div class="pch">CH${it.ch} ｜ ${escapeHtml(it.killer || "匿名")}</div></div>
-      <div class="pch">重生 ${fmtHM(it.respawnAt)}</div>
-      <div class="pcd">${cd}</div>
+      <div class="pch">重生 ${rtInfo}</div>
+      <div class="pcd">${remainText(it, now)}</div>
     </div>`;
   }).join("");
 }
@@ -604,29 +587,26 @@ function renderPatrol() {
 function renderRecords() {
   const now = serverNow();
   const rows = Object.entries(kills)
-    .filter(([, it]) => it && it.respawnAt)
-    .map(([id, it]) => ({ id, ...it, remain: it.respawnAt - now, st: stateOf(it, now) }))
-    .sort((a, b) => a.remain - b.remain);
+    .filter(([, it]) => it && bossByKey[it.boss])
+    .map(([id, it]) => ({ id, ...it, st: stateOf(it, now), earliest: windowOf(it).earliest }))
+    .sort((a, b) => a.earliest - b.earliest);
 
   document.getElementById("recordCount").textContent = `${rows.length} 筆`;
   const body = document.getElementById("recordBody");
 
   if (rows.length === 0) {
-    body.innerHTML = currentRoom
-      ? '<tr><td colspan="7" class="empty">目前沒有紀錄，記錄一筆擊殺試試吧！</td></tr>'
-      : '<tr><td colspan="7" class="empty">加入房間後，這裡會同步顯示大家的紀錄</td></tr>';
+    body.innerHTML = '<tr><td colspan="7" class="empty">記錄一筆擊殺後,這裡會即時同步顯示大家的紀錄</td></tr>';
     return;
   }
   body.innerHTML = rows.map(r => {
-    const b = bossByKey[r.boss] || { emoji: "❔", name: r.bossName || "?" };
-    const cd = r.st === "recorded" ? "已重生" : fmtCountdown(r.remain);
+    const b = bossByKey[r.boss];
     return `<tr>
-      <td>${b.emoji} ${escapeHtml(b.name)}</td>
+      <td>${escapeHtml(b.name)}</td>
       <td>CH${r.ch}</td>
       <td>${escapeHtml(r.killer || "匿名")}</td>
       <td>${fmtHM(r.killTime)}</td>
       <td><span class="stateTag tag-${r.st}">${STATE_LABEL[r.st]}</span></td>
-      <td>${cd}</td>
+      <td>${remainText(r, now)}</td>
       <td><button class="delBtn" data-del="${r.id}">刪除</button></td>
     </tr>`;
   }).join("");
@@ -635,13 +615,9 @@ function renderRecords() {
     btn.addEventListener("click", () => deleteKill(btn.getAttribute("data-del"))));
 }
 
-function renderAll() {
-  renderGrid();
-  renderPatrol();
-  renderRecords();
-}
+function renderAll() { renderGrid(); renderPatrol(); renderRecords(); }
 
-/* ---------- clock / connection ---------- */
+/* ---------- clock / connection / sync ---------- */
 function tick() {
   document.getElementById("clock").textContent = fmtClock(serverNow());
   updateEstimate();
@@ -654,10 +630,9 @@ onValue(connectedRef, snap => {
   if (snap.val() === true) { el.textContent = "● 已連線"; el.classList.add("on"); }
   else { el.textContent = "● 連線中…"; el.classList.remove("on"); }
 });
+onValue(killsRef, snap => { kills = snap.val() || {}; renderAll(); });
 
 /* ---------- events ---------- */
-document.getElementById("joinBtn").addEventListener("click", joinRoom);
-document.getElementById("leaveBtn").addEventListener("click", leaveRoom);
 document.getElementById("clearAllBtn").addEventListener("click", clearAll);
 document.getElementById("bossSelect").addEventListener("change", e => setCurrentBoss(e.target.value));
 document.getElementById("recordBtn").addEventListener("click", () => {
@@ -666,10 +641,12 @@ document.getElementById("recordBtn").addEventListener("click", () => {
 document.getElementById("chInput").addEventListener("keydown", e => {
   if (e.key === "Enter") recordKill(currentBoss, document.getElementById("chInput").value);
 });
+const nickEl = document.getElementById("nick");
+nickEl.addEventListener("change", () => localStorage.setItem("bt_nick", nickEl.value.trim()));
 
 /* ---------- init ---------- */
 const savedNick = localStorage.getItem("bt_nick");
-if (savedNick) document.getElementById("nick").value = savedNick;
+if (savedNick) nickEl.value = savedNick;
 
 buildBossList();
 buildGrid();
