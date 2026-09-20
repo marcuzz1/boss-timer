@@ -3,242 +3,324 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BOSS 40分＋5分循環計時器</title>
+<title>BOSS 房間計時器</title>
 <style>
   * { box-sizing: border-box; }
 
+  :root {
+    --bg: #0b1017;
+    --panel: #141c26;
+    --panel2: #18222e;
+    --line: #253242;
+    --line2: #2f4052;
+    --text: #eaf2f8;
+    --muted: #8ea0af;
+    --accent: #4d84ff;
+    --green: #2ecd88;
+    --orange: #f6a432;
+    --red: #ef5b5b;
+    --purple: #9d7bff;
+  }
+
   body {
     margin: 0;
-    background: #0f1720;
-    color: #eaf2f8;
-    font-family: Arial, "Microsoft JhengHei", sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, #16202c 0%, var(--bg) 60%);
+    color: var(--text);
+    font-family: "Microsoft JhengHei", Arial, sans-serif;
+    min-height: 100vh;
   }
 
-  .wrap {
-    width: min(1180px, 96%);
-    margin: 20px auto 36px;
-  }
+  .wrap { width: min(1180px, 96%); margin: 18px auto 48px; }
 
-  .topbar {
-    background: #18212b;
-    border: 1px solid #273442;
-    border-radius: 12px;
-    padding: 14px;
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px;
     margin-bottom: 16px;
   }
 
-  h1 {
-    margin: 0 0 8px;
-    text-align: center;
-    font-size: 28px;
+  /* ---------- header ---------- */
+  .header { text-align: center; }
+  .header h1 { margin: 0 0 4px; font-size: 30px; letter-spacing: 1px; }
+  .header .sub { color: var(--muted); font-size: 14px; margin-bottom: 12px; }
+  .clock {
+    font-family: Consolas, monospace;
+    font-size: 40px;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: 2px;
   }
+  .conn { margin-top: 6px; font-weight: 800; font-size: 14px; color: var(--orange); }
+  .conn.on { color: var(--green); }
 
-  .sub {
-    text-align: center;
-    color: #9baab6;
-    margin-bottom: 12px;
-    font-size: 14px;
-  }
-
-  .toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 10px;
-    align-items: center;
-  }
-
-  .selectedCount {
-    color: #d9e3ea;
-    font-weight: 700;
-    min-width: 110px;
-    text-align: center;
-  }
-
-  button {
-    border: none;
-    border-radius: 8px;
-    padding: 10px 14px;
-    font-weight: 800;
-    cursor: pointer;
-    font-size: 14px;
-  }
-
-  .btn45 { background: #4d84ff; color: white; }
-  .btn5  { background: #f6a432; color: #131313; }
-  .btnCancel { background: #50606f; color: white; }
-  .btnSort { background: #50606f; color: white; }
-  .btnClear { background: #d84e4e; color: white; }
-
-  .grid {
+  /* ---------- room ---------- */
+  .roomGrid {
     display: grid;
-    grid-template-columns: repeat(10, minmax(0, 1fr));
-    gap: 6px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
   }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 700; }
+  input, select {
+    width: 100%;
+    border: 1px solid var(--line2);
+    background: #0f1620;
+    color: #fff;
+    border-radius: 9px;
+    padding: 11px 12px;
+    font-size: 14px;
+    outline: none;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
 
-  .card {
-    position: relative;
-    min-height: 72px;
-    background: #131d27;
-    border: 1px solid #263340;
-    border-radius: 3px;
+  .btnRow { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; align-items: center; }
+  button {
+    border: none; border-radius: 9px; padding: 11px 16px;
+    font-weight: 800; cursor: pointer; font-size: 14px; color: #fff;
+  }
+  .btn-primary { background: var(--accent); }
+  .btn-green { background: var(--green); color: #08130d; }
+  .btn-gray { background: #46586a; }
+  .btn-red { background: var(--red); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+
+  .roomStatus { margin-left: auto; color: var(--muted); font-size: 13px; font-weight: 700; }
+  .roomStatus b { color: #cfe0ee; }
+
+  .sectionTitle { font-size: 18px; font-weight: 900; margin: 0 0 4px; }
+  .sectionSub { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+
+  /* ---------- boss list ---------- */
+  .bossList { display: flex; flex-wrap: wrap; gap: 10px; }
+  .bossCard {
+    flex: 1 1 160px;
+    background: var(--panel2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px;
     cursor: pointer;
-    transition: 0.15s ease;
-    padding: 8px 6px 6px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+    transition: .15s ease;
+    text-align: center;
+  }
+  .bossCard:hover { border-color: var(--line2); transform: translateY(-2px); }
+  .bossCard.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent) inset, 0 6px 18px rgba(77,132,255,.18);
+    background: #182640;
+  }
+  .bossCard .emoji { font-size: 34px; line-height: 1; }
+  .bossCard .bname { font-weight: 900; font-size: 16px; margin-top: 6px; }
+  .bossCard .brt { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .bossCard .bcount { font-size: 12px; color: var(--green); margin-top: 4px; font-weight: 700; }
+
+  /* ---------- record form ---------- */
+  .recordGrid { display: grid; grid-template-columns: 1.4fr 1fr 1.4fr auto; gap: 10px; align-items: end; }
+  .tracking {
+    background: var(--panel2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px 14px; margin-bottom: 12px;
+    display: flex; gap: 18px; flex-wrap: wrap; align-items: center;
+  }
+  .tracking .k { color: var(--muted); font-size: 12px; }
+  .tracking .v { font-weight: 900; font-size: 18px; }
+  .tracking .v.boss { color: var(--accent); }
+  .estimate { margin-top: 10px; color: var(--muted); font-size: 13px; }
+  .estimate b { color: #cfe0ee; }
+
+  /* ---------- channel grid ---------- */
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .dot.recorded { background: var(--red); }
+  .dot.counting { background: var(--green); }
+  .dot.soon { background: var(--orange); }
+  .dot.idle { background: #46586a; }
+
+  .grid { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px; }
+  .cell {
+    position: relative; min-height: 66px;
+    background: #0f1822; border: 1px solid #25323f; border-radius: 8px;
+    cursor: pointer; transition: .12s ease; padding: 6px 4px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
     user-select: none;
   }
+  .cell:hover { border-color: var(--line2); transform: translateY(-1px); }
+  .cell .ch { font-size: 15px; font-weight: 900; color: #dfeaf3; }
+  .cell .cd { font-size: 13px; font-weight: 800; font-family: Consolas, monospace; margin-top: 2px; color: #cfe0ee; }
+  .cell.selected { outline: 2px solid var(--accent); }
+  .cell.counting { border-color: var(--green); background: #10241c; }
+  .cell.counting .cd { color: var(--green); }
+  .cell.soon { border-color: var(--orange); background: #241d10; }
+  .cell.soon .cd { color: var(--orange); }
+  .cell.recorded { border-color: var(--red); background: #261414; animation: pulse 1.4s infinite; }
+  .cell.recorded .cd { color: var(--red); }
+  @keyframes pulse { 0%,100%{ box-shadow: 0 0 0 0 rgba(239,91,91,.35);} 50%{ box-shadow: 0 0 0 5px rgba(239,91,91,0);} }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
 
-  .card:hover {
-    transform: translateY(-1px);
-    border-color: #3d5265;
+  /* ---------- patrol ---------- */
+  .patrolList { display: flex; flex-direction: column; gap: 8px; }
+  .patrolItem {
+    display: grid; grid-template-columns: auto 1fr auto auto; gap: 12px; align-items: center;
+    background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px;
   }
+  .patrolItem .pemoji { font-size: 22px; }
+  .patrolItem .pname { font-weight: 800; }
+  .patrolItem .pch { color: var(--muted); font-size: 13px; }
+  .patrolItem .pcd { font-family: Consolas, monospace; font-weight: 900; font-size: 18px; }
+  .patrolItem.soon { border-color: var(--orange); }
+  .patrolItem.soon .pcd { color: var(--orange); }
+  .patrolItem.recorded { border-color: var(--red); }
+  .patrolItem.recorded .pcd { color: var(--red); }
+  .empty { color: var(--muted); text-align: center; padding: 18px; }
 
-  .card.selected {
-    border: 2px solid #f0ad2e;
-    box-shadow: inset 0 0 0 1px rgba(240,173,46,0.25);
+  /* ---------- records table ---------- */
+  .tableWrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px; }
+  th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 700; white-space: nowrap; }
+  td .stateTag { padding: 2px 8px; border-radius: 999px; font-weight: 800; font-size: 12px; }
+  .tag-counting { background: rgba(46,205,136,.18); color: var(--green); }
+  .tag-soon { background: rgba(246,164,50,.18); color: var(--orange); }
+  .tag-recorded { background: rgba(239,91,91,.18); color: var(--red); }
+  .tag-idle { background: rgba(70,88,106,.3); color: var(--muted); }
+  .delBtn { background: #3a2530; color: var(--red); padding: 6px 10px; font-size: 12px; }
+
+  .count-pill { background: #0f1822; border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; font-size: 13px; color: var(--muted); font-weight: 700; }
+  .titleRow { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+
+  .footNote { color: var(--muted); font-size: 12px; text-align: center; margin-top: 4px; }
+
+  @media (max-width: 900px) {
+    .roomGrid { grid-template-columns: 1fr; }
+    .recordGrid { grid-template-columns: 1fr 1fr; }
+    .grid { grid-template-columns: repeat(6, minmax(0,1fr)); }
   }
-
-  .card.finished {
-    border-color: #2ebd7f;
-    background: #13252a;
-    box-shadow: inset 0 0 0 1px rgba(46,189,127,0.18);
-  }
-
-  .card.counting {
-    border-color: #2fcd88;
-    background: #15202a;
-  }
-
-  .card.zoneonly {
-    border-color: #d8902e;
-  }
-
-  .ch {
-    font-size: 19px;
-    font-weight: 900;
-    line-height: 1.05;
-    color: #f4fbff;
-    margin-bottom: 3px;
-  }
-
-  .status {
-    font-size: 18px;
-    font-weight: 900;
-    font-family: Consolas, monospace;
-    line-height: 1.05;
-    color: #dce7ef;
-  }
-
-  .readyText {
-    font-size: 13px;
-    font-weight: 900;
-    color: #2fcd88;
-    margin-top: 2px;
-  }
-
-  .subline {
-    margin-top: 3px;
-    font-size: 10px;
-    line-height: 1.35;
-    color: #80909d;
-    text-align: center;
-  }
-
-  .zoneMark {
-    margin-top: 2px;
-    font-size: 10px;
-    font-weight: 800;
-    color: #f6a432;
-  }
-
-
-
-  .chatPanel {
-    margin-top: 16px;
-    background: #18212b;
-    border: 1px solid #273442;
-    border-radius: 10px;
-    padding: 12px;
-  }
-  .chatTitle { font-size: 16px; font-weight: 900; margin-bottom: 10px; }
-  .chatMessages {
-    height: 220px; overflow-y: auto; background: #111923;
-    border: 1px solid #26333f; border-radius: 8px; padding: 10px;
-  }
-  .chatMsg { padding: 6px 0; border-bottom: 1px solid #202c37; line-height: 1.45; word-break: break-word; }
-  .chatMsg:last-child { border-bottom: none; }
-  .chatMeta { font-size: 11px; color: #83919d; margin-bottom: 2px; }
-  .chatName { color: #6fb1ff; font-weight: 800; }
-  .chatText { font-size: 14px; color: #e6edf3; }
-  .chatForm { display: grid; grid-template-columns: 130px 1fr auto; gap: 8px; margin-top: 10px; }
-  .chatForm input {
-    min-width: 0; width: 100%; border: 1px solid #334250; background: #111923;
-    color: white; border-radius: 7px; padding: 10px 11px; font-size: 14px; outline: none;
-  }
-  .chatForm input:focus { border-color: #5d8cff; }
-  .chatSend { background: #4d84ff; color: white; }
-  @media (max-width: 650px) { .chatForm { grid-template-columns: 1fr; } }
-
-  @media (max-width: 980px) {
-    .grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-  }
-
-  @media (max-width: 650px) {
-    .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-    .ch { font-size: 17px; }
-    .status { font-size: 16px; }
+  @media (max-width: 560px) {
+    .recordGrid { grid-template-columns: 1fr; }
+    .grid { grid-template-columns: repeat(4, minmax(0,1fr)); }
+    .clock { font-size: 32px; }
   }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="topbar">
-    <h1>👾 BOSS 頻道計時器</h1>
-    <div class="sub">多人同步版：任何人開始或清除計時，其他人的畫面會即時同步</div>
 
-    <div class="toolbar">
-      <div class="selectedCount" id="selectedCount">已選 0 個頻道</div>
-      <div class="selectedCount" id="connectionStatus">Firebase 連線中…</div>
-      <button class="btnSort" id="sortBtn" type="button">依剩餘時間排序</button>
-      <button class="btn45" id="start40Btn" type="button">開始 40 分鐘</button>
-      <button class="btnCancel" id="clearSelectedBtn">清除已選計時</button>
-      <button class="btnCancel" id="deselectBtn">取消選取</button>
-      <button class="btnClear" id="clearAllBtn" type="button">全部清除</button>
+  <!-- Header -->
+  <div class="panel header">
+    <h1>⚔️ BOSS 房間計時器</h1>
+    <div class="sub">建立房間・記錄擊殺・多人同步・即時共享</div>
+    <div class="clock" id="clock">--:--:--</div>
+    <div class="conn" id="conn">● 尚未連線</div>
+  </div>
+
+  <!-- Room -->
+  <div class="panel">
+    <div class="sectionTitle">🚪 房間</div>
+    <div class="sectionSub">輸入相同「房間密碼」的人會看到同一份紀錄，把密碼傳給朋友即可一起巡王。</div>
+    <div class="roomGrid">
+      <div class="field">
+        <label>你的暱稱</label>
+        <input id="nick" type="text" maxlength="16" placeholder="輸入暱稱">
+      </div>
+      <div class="field">
+        <label>房間密碼</label>
+        <input id="roomPw" type="text" maxlength="24" placeholder="例如：mogu123">
+      </div>
+      <div class="field">
+        <label>房間名稱（選填）</label>
+        <input id="roomName" type="text" maxlength="24" placeholder="例如：菇菇小隊">
+      </div>
+    </div>
+    <div class="btnRow">
+      <button class="btn-primary" id="joinBtn">＋ 建立 / 加入房間</button>
+      <button class="btn-gray" id="leaveBtn" disabled>離開房間</button>
+      <div class="roomStatus" id="roomStatus">身份：<b>訪客</b> ｜ 房間：<b>—</b></div>
     </div>
   </div>
 
-  <div id="grid" class="grid"></div>
-
-  <div class="chatPanel">
-    <div class="chatTitle">💬 頻道聊天室</div>
-    <div id="chatMessages" class="chatMessages">
-      <div class="chatMeta">聊天室連線中…</div>
-    </div>
-    <form id="chatForm" class="chatForm">
-      <input id="chatName" type="text" maxlength="16" placeholder="暱稱">
-      <input id="chatInput" type="text" maxlength="120" placeholder="輸入訊息…">
-      <button class="chatSend" type="submit">送出</button>
-    </form>
+  <!-- Boss list -->
+  <div class="panel">
+    <div class="sectionTitle">🐾 BOSS 清單</div>
+    <div class="sectionSub">點卡片切換目前追蹤的 BOSS，下方頻道格會顯示該 BOSS 的狀態。</div>
+    <div class="bossList" id="bossList"></div>
   </div>
 
+  <!-- Record -->
+  <div class="panel">
+    <div class="sectionTitle">🩸 BOSS 擊殺</div>
+    <div class="sectionSub">選擇 BOSS・輸入頻道・記錄擊殺</div>
+    <div class="tracking">
+      <div><div class="k">目前追蹤</div><div class="v boss" id="trackName">—</div></div>
+      <div><div class="k">重生時間</div><div class="v" id="trackRt">—</div></div>
+    </div>
+    <div class="recordGrid">
+      <div class="field">
+        <label>選擇 BOSS</label>
+        <select id="bossSelect"></select>
+      </div>
+      <div class="field">
+        <label>頻道 CH</label>
+        <input id="chInput" type="number" min="1" max="60" placeholder="1~60">
+      </div>
+      <div class="field">
+        <label>擊殺者（選填）</label>
+        <input id="killerInput" type="text" maxlength="16" placeholder="預設使用暱稱">
+      </div>
+      <button class="btn-green" id="recordBtn">⚔ 記錄擊殺</button>
+    </div>
+    <div class="estimate" id="estimate">預估重生時間：<b>—</b></div>
+  </div>
+
+  <!-- Channel grid -->
+  <div class="panel">
+    <div class="sectionTitle">📺 頻道選擇（CH1～CH60）</div>
+    <div class="legend">
+      <span><i class="dot recorded"></i>已重生 / 待確認</span>
+      <span><i class="dot soon"></i>即將重生</span>
+      <span><i class="dot counting"></i>計時中</span>
+      <span><i class="dot idle"></i>空閒</span>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="hint">💡 單擊選取並帶入頻道；雙擊直接記錄擊殺（使用目前追蹤的 BOSS 與你的暱稱）</div>
+  </div>
+
+  <!-- Patrol -->
+  <div class="panel">
+    <div class="titleRow">
+      <div class="sectionTitle" style="margin:0;">🎯 優先巡查</div>
+      <span class="count-pill" id="patrolCount">0 筆</span>
+    </div>
+    <div class="sectionSub">已重生或即將重生的頻道會排在最前面。</div>
+    <div class="patrolList" id="patrolList"><div class="empty">目前沒有即將重生的頻道</div></div>
+  </div>
+
+  <!-- Records table -->
+  <div class="panel">
+    <div class="titleRow">
+      <div class="sectionTitle" style="margin:0;">▤ 房間全部紀錄</div>
+      <span class="count-pill" id="recordCount">0 筆</span>
+      <button class="btn-red" id="clearAllBtn" style="margin-left:auto;">全部清除</button>
+    </div>
+    <div class="tableWrap">
+      <table>
+        <thead>
+          <tr>
+            <th>BOSS</th><th>CH</th><th>擊殺者</th><th>擊殺時間</th><th>狀態</th><th>剩餘</th><th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="recordBody">
+          <tr><td colspan="7" class="empty">加入房間後，這裡會同步顯示大家的紀錄</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="footNote">◷ 資料即時同步 ｜ 與好友一起巡王不卡頓</div>
+  </div>
 
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
 import {
-  getDatabase,
-  ref,
-  onValue,
-  update,
-  remove,
-  push,
-  query,
-  limitToLast
+  getDatabase, ref, onValue, set, update, remove
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -255,356 +337,346 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-const CHANNELS = 60;
-const MAIN_MS = 40 * 60 * 1000;
-const ZONE_MS = 5 * 60 * 1000;
+/* ===== 設定：BOSS 與重生時間（分鐘）。可自行調整 respawnMin ===== */
+const BOSSES = [
+  { key: "zombie",  name: "殭屍菇菇", emoji: "🧟", respawnMin: 60 },
+  { key: "mushking",name: "蘑菇王",   emoji: "🍄", respawnMin: 60 },
+  { key: "blackcroc",name: "黑鱷魚王", emoji: "🐊", respawnMin: 60 },
+  { key: "monkey",  name: "猴王",     emoji: "🐒", respawnMin: 60 },
+  { key: "hermit",  name: "寄居蟹",   emoji: "🦀", respawnMin: 60 },
+];
+const bossByKey = Object.fromEntries(BOSSES.map(b => [b.key, b]));
 
-const channelsRef = ref(db, "bossTimer/channels");
-const chatRef = ref(db, "bossTimer/chat");
+const CHANNELS = 60;
+const SOON_MS = 5 * 60 * 1000;   // 「即將重生」警示區間
+
 const serverOffsetRef = ref(db, ".info/serverTimeOffset");
 const connectedRef = ref(db, ".info/connected");
 
-let data = {};
-let selected = new Set();
 let serverTimeOffset = 0;
-let sortByRemaining = false;
+let currentBoss = BOSSES[0].key;
+let currentRoom = null;          // sanitized room key
+let roomUnsub = null;
+let kills = {};                  // { "bossKey_ch": {boss, bossName, ch, killer, killTime, respawnAt} }
+let selectedCh = null;
 
-function serverNow() {
-  return Date.now() + serverTimeOffset;
+const serverNow = () => Date.now() + serverTimeOffset;
+
+/* ---------- helpers ---------- */
+function roomKeyOf(pw) {
+  return "r_" + pw.trim().replace(/[.#$/\[\]\s]/g, "_");
+}
+function killId(bossKey, ch) { return `${bossKey}_${ch}`; }
+
+function fmtClock(ts) {
+  const d = new Date(ts);
+  const p = n => String(n).padStart(2, "0");
+  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+function fmtHM(ts) {
+  const d = new Date(ts);
+  const p = n => String(n).padStart(2, "0");
+  return `${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function fmtCountdown(ms) {
+  if (ms <= 0) return "00:00";
+  const s = Math.ceil(ms / 1000);
+  const m = Math.floor(s / 60);
+  const p = n => String(n).padStart(2, "0");
+  return `${p(m)}:${p(s % 60)}`;
+}
+function stateOf(item, now) {
+  if (!item || !item.respawnAt) return "idle";
+  const remain = item.respawnAt - now;
+  if (remain <= 0) return "recorded";      // 已重生 / 待確認
+  if (remain <= SOON_MS) return "soon";    // 即將重生
+  return "counting";                       // 計時中
+}
+const STATE_LABEL = { idle: "空閒", counting: "計時中", soon: "即將重生", recorded: "已重生" };
+
+/* ---------- build static UI ---------- */
+function buildBossList() {
+  const list = document.getElementById("bossList");
+  const sel = document.getElementById("bossSelect");
+  list.innerHTML = "";
+  sel.innerHTML = "";
+  BOSSES.forEach(b => {
+    const card = document.createElement("div");
+    card.className = "bossCard";
+    card.id = `boss-${b.key}`;
+    card.innerHTML = `
+      <div class="emoji">${b.emoji}</div>
+      <div class="bname">${b.name}</div>
+      <div class="brt">重生 ${b.respawnMin} 分</div>
+      <div class="bcount" id="bosscount-${b.key}"></div>`;
+    card.addEventListener("click", () => setCurrentBoss(b.key));
+    list.appendChild(card);
+
+    const opt = document.createElement("option");
+    opt.value = b.key;
+    opt.textContent = `${b.emoji} ${b.name}`;
+    sel.appendChild(opt);
+  });
+  sel.value = currentBoss;
 }
 
 function buildGrid() {
   const grid = document.getElementById("grid");
   grid.innerHTML = "";
-
   for (let i = 1; i <= CHANNELS; i++) {
-    const card = document.createElement("div");
-    card.className = "card";
-    card.id = `card-${i}`;
-    card.addEventListener("click", () => toggleSelect(i));
-
-    card.innerHTML = `
-      <div class="ch">CH${i}</div>
-      <div class="status" id="status-${i}"></div>
-      <div class="readyText" id="ready-${i}"></div>
-      <div class="subline" id="subline-${i}"></div>
-      <div class="zoneMark" id="zone-${i}"></div>
-    `;
-    grid.appendChild(card);
+    const cell = document.createElement("div");
+    cell.className = "cell";
+    cell.id = `cell-${i}`;
+    cell.innerHTML = `<div class="ch">CH${i}</div><div class="cd" id="cd-${i}"></div>`;
+    cell.addEventListener("click", () => {
+      selectedCh = i;
+      document.getElementById("chInput").value = i;
+      renderGrid();
+    });
+    cell.addEventListener("dblclick", () => recordKill(currentBoss, i));
+    grid.appendChild(cell);
   }
 }
 
-function toggleSelect(ch) {
-  if (selected.has(ch)) selected.delete(ch);
-  else selected.add(ch);
-  updateSelectionUI();
+function setCurrentBoss(key) {
+  currentBoss = key;
+  document.getElementById("bossSelect").value = key;
+  BOSSES.forEach(b =>
+    document.getElementById(`boss-${b.key}`).classList.toggle("active", b.key === key));
+  const b = bossByKey[key];
+  document.getElementById("trackName").textContent = `${b.emoji} ${b.name}`;
+  document.getElementById("trackRt").textContent = `${b.respawnMin} 分`;
+  updateEstimate();
+  renderGrid();
 }
 
-function updateSelectionUI() {
-  document.getElementById("selectedCount").textContent =
-    `已選 ${selected.size} 個頻道`;
-
-  for (let i = 1; i <= CHANNELS; i++) {
-    const card = document.getElementById(`card-${i}`);
-    card.classList.toggle("selected", selected.has(i));
-  }
+function updateEstimate() {
+  const b = bossByKey[currentBoss];
+  const est = serverNow() + b.respawnMin * 60 * 1000;
+  document.getElementById("estimate").innerHTML =
+    `若現在記錄，預估重生時間：<b>${fmtHM(est)}</b>（${b.respawnMin} 分後）`;
 }
 
-async function start45ForSelected() {
-  if (selected.size === 0) {
-    alert("請先選擇至少一個頻道");
-    return;
-  }
+/* ---------- Firebase: room ---------- */
+function joinRoom() {
+  const pw = document.getElementById("roomPw").value.trim();
+  const nick = document.getElementById("nick").value.trim();
+  if (!pw) { alert("請輸入房間密碼"); return; }
+  if (!nick) { alert("請輸入暱稱"); return; }
 
+  localStorage.setItem("bt_nick", nick);
+  const key = roomKeyOf(pw);
+  const roomName = document.getElementById("roomName").value.trim();
+
+  // 建立 / 更新房間名稱（不覆蓋既有紀錄）
+  update(ref(db, `rooms/${key}/meta`), {
+    name: roomName || pw,
+    updatedAt: serverNow()
+  }).catch(err => console.error(err));
+
+  if (roomUnsub) roomUnsub();
+  currentRoom = key;
+
+  const killsRef = ref(db, `rooms/${key}/kills`);
+  roomUnsub = onValue(killsRef, snap => {
+    kills = snap.val() || {};
+    renderAll();
+  });
+
+  onValue(ref(db, `rooms/${key}/meta/name`), snap => {
+    document.getElementById("roomStatus").innerHTML =
+      `身份：<b>${escapeHtml(nick)}</b> ｜ 房間：<b>${escapeHtml(snap.val() || pw)}</b>`;
+  });
+
+  document.getElementById("leaveBtn").disabled = false;
+  document.getElementById("joinBtn").textContent = "重新加入房間";
+}
+
+function leaveRoom() {
+  if (roomUnsub) { roomUnsub(); roomUnsub = null; }
+  currentRoom = null;
+  kills = {};
+  document.getElementById("leaveBtn").disabled = true;
+  document.getElementById("joinBtn").textContent = "＋ 建立 / 加入房間";
+  document.getElementById("roomStatus").innerHTML = "身份：<b>訪客</b> ｜ 房間：<b>—</b>";
+  renderAll();
+}
+
+/* ---------- Firebase: kills ---------- */
+async function recordKill(bossKey, ch) {
+  if (!currentRoom) { alert("請先加入房間"); return; }
+  ch = Number(ch);
+  if (!ch || ch < 1 || ch > CHANNELS) { alert("請輸入 1~60 的頻道"); return; }
+
+  const b = bossByKey[bossKey];
+  const nick = document.getElementById("nick").value.trim();
+  const killer = (document.getElementById("killerInput").value.trim() || nick || "匿名").slice(0, 16);
   const now = serverNow();
-  const updates = {};
-
-  selected.forEach(ch => {
-    updates[`CH${ch}`] = {
-      mainStart: now,
-      mainEnd: now + MAIN_MS
-    };
-  });
 
   try {
-    await update(channelsRef, updates);
-    selected.clear();
-    updateSelectionUI();
+    await set(ref(db, `rooms/${currentRoom}/kills/${killId(bossKey, ch)}`), {
+      boss: bossKey,
+      bossName: b.name,
+      ch,
+      killer,
+      killTime: now,
+      respawnAt: now + b.respawnMin * 60 * 1000
+    });
+    selectedCh = null;
   } catch (err) {
     console.error(err);
-    alert("寫入 Firebase 失敗，請確認 Realtime Database 規則允許寫入。");
+    alert("寫入失敗，請確認 Firebase 規則允許寫入。");
   }
 }
 
-async function clearSelectedTimers() {
-  if (selected.size === 0) {
-    alert("請先選擇至少一個頻道");
-    return;
-  }
-
-  if (!confirm(`確定清除已選 ${selected.size} 個頻道的計時嗎？`)) return;
-
-  const updates = {};
-  selected.forEach(ch => {
-    updates[`CH${ch}`] = null;
-  });
-
-  try {
-    await update(channelsRef, updates);
-    selected.clear();
-    updateSelectionUI();
-  } catch (err) {
-    console.error(err);
-    alert("清除失敗，請確認 Firebase 規則。");
-  }
-}
-
-function deselectAll() {
-  selected.clear();
-  updateSelectionUI();
+async function deleteKill(id) {
+  if (!currentRoom) return;
+  try { await remove(ref(db, `rooms/${currentRoom}/kills/${id}`)); }
+  catch (err) { console.error(err); alert("刪除失敗，請確認 Firebase 規則。"); }
 }
 
 async function clearAll() {
-  if (!confirm("確定要清除全部頻道紀錄嗎？")) return;
-
-  try {
-    await remove(channelsRef);
-    selected.clear();
-    updateSelectionUI();
-  } catch (err) {
-    console.error(err);
-    alert("全部清除失敗，請確認 Firebase 規則。");
-  }
+  if (!currentRoom) { alert("請先加入房間"); return; }
+  if (!confirm("確定要清除本房間全部紀錄嗎？")) return;
+  try { await remove(ref(db, `rooms/${currentRoom}/kills`)); }
+  catch (err) { console.error(err); alert("清除失敗，請確認 Firebase 規則。"); }
 }
 
-function formatCountdown(ms) {
-  if (ms <= 0) return "00:00";
-  const totalSec = Math.ceil(ms / 1000);
-  const min = Math.floor(totalSec / 60);
-  const sec = totalSec % 60;
-  return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+/* ---------- render ---------- */
+function escapeHtml(t) {
+  return String(t).replaceAll("&","&amp;").replaceAll("<","&lt;")
+    .replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
 }
 
-function formatTime(ts) {
-  if (!ts) return "";
-  const d = new Date(ts);
-  const h = String(d.getHours()).padStart(2, "0");
-  const m = String(d.getMinutes()).padStart(2, "0");
-  return `${h}:${m}`;
-}
-
-
-function reorderCards(now) {
-  const grid = document.getElementById("grid");
-  const cards = [];
-
-  for (let ch = 1; ch <= CHANNELS; ch++) {
-    const item = data[`CH${ch}`] || {};
-    let group = 2;          // 0 = 40分鐘倒數中, 1 = 5分鐘循環中, 2 = 未計時
-    let remaining = Infinity;
-
-    if (item.mainEnd) {
-      const mainRemain = item.mainEnd - now;
-
-      if (mainRemain > 0) {
-        group = 0;
-        remaining = mainRemain;
-      } else {
-        group = 1;
-        const elapsedAfter40 = Math.max(0, now - item.mainEnd);
-        const cycleElapsed = elapsedAfter40 % ZONE_MS;
-        remaining = ZONE_MS - cycleElapsed;
-        if (remaining <= 0 || remaining > ZONE_MS) remaining = ZONE_MS;
-      }
-    }
-
-    cards.push({
-      ch,
-      group,
-      remaining,
-      el: document.getElementById(`card-${ch}`)
-    });
-  }
-
-  if (sortByRemaining) {
-    cards.sort((a, b) => {
-      if (a.group !== b.group) return a.group - b.group;
-      if (a.remaining !== b.remaining) return a.remaining - b.remaining;
-      return a.ch - b.ch;
-    });
-  } else {
-    cards.sort((a, b) => a.ch - b.ch);
-  }
-
-  cards.forEach(card => grid.appendChild(card.el));
-}
-
-function render() {
+function renderGrid() {
   const now = serverNow();
+  for (let i = 1; i <= CHANNELS; i++) {
+    const cell = document.getElementById(`cell-${i}`);
+    const cd = document.getElementById(`cd-${i}`);
+    const item = kills[killId(currentBoss, i)];
+    const st = stateOf(item, now);
 
-  for (let ch = 1; ch <= CHANNELS; ch++) {
-    const card = document.getElementById(`card-${ch}`);
-    const status = document.getElementById(`status-${ch}`);
-    const ready = document.getElementById(`ready-${ch}`);
-    const subline = document.getElementById(`subline-${ch}`);
-    const zone = document.getElementById(`zone-${ch}`);
-    const item = data[`CH${ch}`] || {};
+    cell.classList.remove("counting", "soon", "recorded", "selected");
+    if (st !== "idle") cell.classList.add(st);
+    if (selectedCh === i) cell.classList.add("selected");
 
-    card.classList.remove("counting", "finished", "zoneonly");
-    ready.textContent = "";
-    subline.textContent = "";
-    zone.textContent = "";
-
-    if (!item.mainEnd) {
-      status.textContent = "";
-      continue;
-    }
-
-    const mainRemain = item.mainEnd - now;
-
-    // 第一階段：固定 40 分鐘倒數
-    if (mainRemain > 0) {
-      status.textContent = formatCountdown(mainRemain);
-      subline.innerHTML =
-        `開始 ${formatTime(item.mainStart)}<br>` +
-        `40分後 ${formatTime(item.mainEnd)}`;
-      card.classList.add("counting");
-      continue;
-    }
-
-    // 第二階段：40 分鐘結束後，自動每 5 分鐘循環
-    // 05:00 → 00:00 → 05:00 → 00:00 ...
-    // 直到這個頻道再次開始新的 40 分鐘。
-    const elapsedAfter45 = Math.max(0, now - item.mainEnd);
-    const cycleElapsed = elapsedAfter45 % ZONE_MS;
-    let cycleRemain = ZONE_MS - cycleElapsed;
-
-    if (cycleRemain <= 0 || cycleRemain > ZONE_MS) {
-      cycleRemain = ZONE_MS;
-    }
-
-    const cycleNumber = Math.floor(elapsedAfter45 / ZONE_MS) + 1;
-
-    status.textContent = formatCountdown(cycleRemain);
-    ready.textContent = "重生區間";
-    subline.innerHTML =
-      `開始 ${formatTime(item.mainStart)}<br>` +
-      `40分到 ${formatTime(item.mainEnd)}`;
-    zone.textContent = `第 ${cycleNumber} 個 5 分鐘區間`;
-    card.classList.add("finished");
+    if (st === "idle") cd.textContent = "";
+    else if (st === "recorded") cd.textContent = "重生";
+    else cd.textContent = fmtCountdown(item.respawnAt - now);
   }
-
-  reorderCards(now);
-  updateSelectionUI();
-}
-
-
-function escapeHtml(text) {
-  return String(text)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-function formatChatTime(ts) {
-  const d = new Date(ts || serverNow());
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
-const chatQuery = query(chatRef, limitToLast(80));
-
-onValue(chatQuery, snapshot => {
-  const box = document.getElementById("chatMessages");
-  const messages = [];
-
-  snapshot.forEach(child => {
-    messages.push(child.val() || {});
+  // per-boss active count
+  BOSSES.forEach(b => {
+    let c = 0;
+    for (let i = 1; i <= CHANNELS; i++) if (kills[killId(b.key, i)]) c++;
+    const el = document.getElementById(`bosscount-${b.key}`);
+    if (el) el.textContent = c ? `追蹤中 ${c} 台` : "";
   });
+}
 
-  if (messages.length === 0) {
-    box.innerHTML = '<div class="chatMeta">目前還沒有訊息</div>';
+function renderPatrol() {
+  const now = serverNow();
+  const items = Object.values(kills)
+    .filter(it => it && it.respawnAt)
+    .map(it => ({ ...it, remain: it.respawnAt - now, st: stateOf(it, now) }))
+    .filter(it => it.st === "recorded" || it.st === "soon")
+    .sort((a, b) => a.remain - b.remain);
+
+  document.getElementById("patrolCount").textContent = `${items.length} 筆`;
+  const box = document.getElementById("patrolList");
+
+  if (items.length === 0) {
+    box.innerHTML = '<div class="empty">目前沒有即將重生的頻道</div>';
     return;
   }
+  box.innerHTML = items.map(it => {
+    const b = bossByKey[it.boss] || { emoji: "❔", name: it.bossName || "?" };
+    const cd = it.st === "recorded" ? "已重生" : fmtCountdown(it.remain);
+    return `<div class="patrolItem ${it.st}">
+      <div class="pemoji">${b.emoji}</div>
+      <div><div class="pname">${escapeHtml(b.name)}</div>
+      <div class="pch">CH${it.ch} ｜ ${escapeHtml(it.killer || "匿名")}</div></div>
+      <div class="pch">重生 ${fmtHM(it.respawnAt)}</div>
+      <div class="pcd">${cd}</div>
+    </div>`;
+  }).join("");
+}
 
-  box.innerHTML = messages.map(msg => `
-    <div class="chatMsg">
-      <div class="chatMeta">
-        <span class="chatName">${escapeHtml(msg.name || "匿名")}</span>
-        ・${formatChatTime(msg.time)}
-      </div>
-      <div class="chatText">${escapeHtml(msg.text || "")}</div>
-    </div>
-  `).join("");
+function renderRecords() {
+  const now = serverNow();
+  const rows = Object.entries(kills)
+    .filter(([, it]) => it && it.respawnAt)
+    .map(([id, it]) => ({ id, ...it, remain: it.respawnAt - now, st: stateOf(it, now) }))
+    .sort((a, b) => a.remain - b.remain);
 
-  box.scrollTop = box.scrollHeight;
-});
+  document.getElementById("recordCount").textContent = `${rows.length} 筆`;
+  const body = document.getElementById("recordBody");
 
-document.getElementById("chatForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-  const nameEl = document.getElementById("chatName");
-  const inputEl = document.getElementById("chatInput");
-
-  const name = nameEl.value.trim() || "匿名";
-  const text = inputEl.value.trim();
-  if (!text) return;
-
-  try {
-    await push(chatRef, {
-      name: name.slice(0, 16),
-      text: text.slice(0, 120),
-      time: serverNow()
-    });
-    inputEl.value = "";
-    inputEl.focus();
-  } catch (err) {
-    console.error(err);
-    alert("訊息送出失敗，請確認 Firebase 規則允許寫入。");
+  if (rows.length === 0) {
+    body.innerHTML = currentRoom
+      ? '<tr><td colspan="7" class="empty">目前沒有紀錄，記錄一筆擊殺試試吧！</td></tr>'
+      : '<tr><td colspan="7" class="empty">加入房間後，這裡會同步顯示大家的紀錄</td></tr>';
+    return;
   }
+  body.innerHTML = rows.map(r => {
+    const b = bossByKey[r.boss] || { emoji: "❔", name: r.bossName || "?" };
+    const cd = r.st === "recorded" ? "已重生" : fmtCountdown(r.remain);
+    return `<tr>
+      <td>${b.emoji} ${escapeHtml(b.name)}</td>
+      <td>CH${r.ch}</td>
+      <td>${escapeHtml(r.killer || "匿名")}</td>
+      <td>${fmtHM(r.killTime)}</td>
+      <td><span class="stateTag tag-${r.st}">${STATE_LABEL[r.st]}</span></td>
+      <td>${cd}</td>
+      <td><button class="delBtn" data-del="${r.id}">刪除</button></td>
+    </tr>`;
+  }).join("");
+
+  body.querySelectorAll("[data-del]").forEach(btn =>
+    btn.addEventListener("click", () => deleteKill(btn.getAttribute("data-del"))));
+}
+
+function renderAll() {
+  renderGrid();
+  renderPatrol();
+  renderRecords();
+}
+
+/* ---------- clock / connection ---------- */
+function tick() {
+  document.getElementById("clock").textContent = fmtClock(serverNow());
+  updateEstimate();
+  renderAll();
+}
+
+onValue(serverOffsetRef, snap => { serverTimeOffset = snap.val() || 0; });
+onValue(connectedRef, snap => {
+  const el = document.getElementById("conn");
+  if (snap.val() === true) { el.textContent = "● 已連線"; el.classList.add("on"); }
+  else { el.textContent = "● 連線中…"; el.classList.remove("on"); }
 });
 
-// Firebase 使用伺服器時間偏移，避免不同玩家電腦時間略有差異。
-onValue(serverOffsetRef, snapshot => {
-  serverTimeOffset = snapshot.val() || 0;
-  render();
-});
-
-// 顯示 Firebase 連線狀態。
-onValue(connectedRef, snapshot => {
-  const el = document.getElementById("connectionStatus");
-  if (snapshot.val() === true) {
-    el.textContent = "● 已同步";
-    el.style.color = "#54dc9b";
-  } else {
-    el.textContent = "● 連線中…";
-    el.style.color = "#f6a432";
-  }
-});
-
-// 只要任何人更改 Firebase，所有開著網頁的人都會立即收到。
-onValue(channelsRef, snapshot => {
-  data = snapshot.val() || {};
-  render();
-});
-
-document.getElementById("sortBtn").addEventListener("click", () => {
-  sortByRemaining = !sortByRemaining;
-  document.getElementById("sortBtn").textContent =
-    sortByRemaining ? "恢復頻道順序" : "依剩餘時間排序";
-  render();
-});
-
-document.getElementById("start40Btn").addEventListener("click", start45ForSelected);
-document.getElementById("clearSelectedBtn").addEventListener("click", clearSelectedTimers);
-document.getElementById("deselectBtn").addEventListener("click", deselectAll);
+/* ---------- events ---------- */
+document.getElementById("joinBtn").addEventListener("click", joinRoom);
+document.getElementById("leaveBtn").addEventListener("click", leaveRoom);
 document.getElementById("clearAllBtn").addEventListener("click", clearAll);
+document.getElementById("bossSelect").addEventListener("change", e => setCurrentBoss(e.target.value));
+document.getElementById("recordBtn").addEventListener("click", () => {
+  recordKill(currentBoss, document.getElementById("chInput").value);
+});
+document.getElementById("chInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") recordKill(currentBoss, document.getElementById("chInput").value);
+});
 
+/* ---------- init ---------- */
+const savedNick = localStorage.getItem("bt_nick");
+if (savedNick) document.getElementById("nick").value = savedNick;
+
+buildBossList();
 buildGrid();
-updateSelectionUI();
-render();
-setInterval(render, 1000);
+setCurrentBoss(currentBoss);
+renderAll();
+tick();
+setInterval(tick, 1000);
 </script>
 </body>
 </html>
