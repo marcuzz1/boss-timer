@@ -121,6 +121,8 @@
   .head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
   .head h2 { margin: 0; font-size: 15px; font-weight: 900; }
   .head .tally { font-size: 12px; color: var(--grape); font-weight: 700; }
+  .recFilter { color-scheme: dark; background: var(--night2); color: var(--cream); border: 2px solid var(--edge); border-radius: 7px; padding: 5px 8px; font-family: inherit; font-size: 13px; font-weight: 700; outline: none; }
+  .recFilter:focus-visible { border-color: var(--gold); }
 
   /* ---------- boss picker ---------- */
   .picker { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
@@ -364,7 +366,7 @@
       </section>
 
       <section class="plate section recwrap">
-        <div class="head"><h2>全部紀錄</h2><span class="tally" id="recordCount">0 筆</span></div>
+        <div class="head"><h2>紀錄</h2><select id="recFilter" class="recFilter"></select><span class="tally" id="recordCount">0 筆</span></div>
         <div class="tablewrap">
           <table>
             <thead><tr><th>BOSS</th><th>CH</th><th>擊殺者</th><th>擊殺</th><th>狀態</th><th>剩餘</th><th></th></tr></thead>
@@ -440,6 +442,7 @@ let currentBoss = BOSSES[0].key;
 let kills = {};
 let selectedCh = null;
 let connected = false;
+let recFilter = "all";
 
 const $ = id => document.getElementById(id);
 const serverNow = () => Date.now() + serverTimeOffset;
@@ -549,6 +552,12 @@ function buildGrid() {
     cell.addEventListener("keydown", e => { if (e.key === "Enter") recordKill(currentBoss, i); });
     grid.appendChild(cell);
   }
+}
+function buildRecFilter() {
+  const sel = $("recFilter");
+  sel.innerHTML = '<option value="all">全部紀錄</option>' + BOSSES.map(b => `<option value="${b.key}">${b.name}</option>`).join("");
+  sel.value = recFilter;
+  sel.addEventListener("change", () => { recFilter = sel.value; renderRecords(serverNow()); });
 }
 function setCurrentBoss(key) {
   currentBoss = key;
@@ -705,10 +714,11 @@ function renderPatrol(now) {
     btn.addEventListener("click", () => recordKill(btn.dataset.boss, Number(btn.dataset.ch))));
 }
 function renderRecords(now) {
-  const rows = sortedRows(now);
+  let rows = sortedRows(now);
+  if (recFilter !== "all") rows = rows.filter(r => r.boss === recFilter);
   $("recordCount").textContent = `${rows.length} 筆`;
   const body = $("recordBody");
-  if (!rows.length) { body.innerHTML = '<tr><td colspan="7" class="empty">還沒有紀錄。打倒王之後記一筆,大家就會一起看到。</td></tr>'; return; }
+  if (!rows.length) { body.innerHTML = '<tr><td colspan="7" class="empty">這個篩選目前沒有紀錄。</td></tr>'; return; }
   body.innerHTML = rows.map(r => {
     const b = bossByKey[r.boss];
     return `<tr>
@@ -836,6 +846,7 @@ if (savedNick) { nickEl.value = savedNick; $("boardName").value = savedNick; }
 refreshSoundBtn();
 buildPicker();
 buildGrid();
+buildRecFilter();
 setCurrentBoss(currentBoss);
 tick();
 setInterval(tick, 1000);

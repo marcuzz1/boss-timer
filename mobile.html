@@ -58,6 +58,8 @@
   .view{display:none;} .view.active{display:block;}
   .h2{font-size:15px;font-weight:900;margin:2px 2px 10px;display:flex;align-items:baseline;gap:8px;}
   .h2 .tally{font-size:12px;color:var(--grape);font-weight:700;}
+  .recFilter{color-scheme:dark;background:var(--night2);color:var(--cream);border:2px solid var(--edge);border-radius:8px;padding:6px 8px;font-family:inherit;font-size:13px;font-weight:700;outline:none;}
+  .recFilter:focus{border-color:var(--gold);}
 
   /* boss picker */
   .picker{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;}
@@ -213,7 +215,8 @@
 
   <!-- 紀錄 -->
   <section class="view" data-view="log">
-    <div class="h2">全部紀錄<span class="tally" id="recordCount">0 筆</span>
+    <div class="h2">紀錄<span class="tally" id="recordCount">0 筆</span>
+      <select id="recFilter" class="recFilter"></select>
       <button id="clearAllBtn" style="margin-left:auto;background:#3a1c28;color:var(--ember);border:2px solid var(--edge);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;">全部清除</button>
     </div>
     <div id="recordList"><div class="empty">還沒有紀錄。到「頻道」記一筆吧。</div></div>
@@ -275,7 +278,7 @@ const boardRef = ref(db, "bossTimer/board");
 const serverOffsetRef = ref(db, ".info/serverTimeOffset");
 const connectedRef = ref(db, ".info/connected");
 
-let serverTimeOffset = 0, currentBoss = BOSSES[0].key, kills = {}, selectedCh = null, patrolBoss = BOSSES[0].key, connected = false;
+let serverTimeOffset = 0, currentBoss = BOSSES[0].key, kills = {}, selectedCh = null, patrolBoss = BOSSES[0].key, connected = false, recFilter = "all";
 const $ = id => document.getElementById(id);
 const serverNow = () => Date.now() + serverTimeOffset;
 const killId = (k,c) => `${k}_${c}`;
@@ -427,11 +430,18 @@ function renderPatrol(now){
   box.innerHTML=`<div class="pgroup"><div class="pghead">${spriteTag(b0,"sp","em",20)}<span class="nm">${escapeHtml(b0.name)}</span><span class="tl">${items.length} 個頻道</span></div>${rows}</div>`;
   box.querySelectorAll(".kill").forEach(btn=>btn.addEventListener("click",()=>recordKill(btn.dataset.boss,Number(btn.dataset.ch))));
 }
+function buildRecFilter(){
+  const sel=$("recFilter");
+  sel.innerHTML='<option value="all">全部紀錄</option>'+BOSSES.map(b=>`<option value="${b.key}">${b.name}</option>`).join("");
+  sel.value=recFilter;
+  sel.addEventListener("change",()=>{ recFilter=sel.value; renderRecords(serverNow()); });
+}
 function renderRecords(now){
-  const rows=sortedRows(now);
+  let rows=sortedRows(now);
+  if(recFilter!=="all") rows=rows.filter(r=>r.boss===recFilter);
   $("recordCount").textContent=`${rows.length} 筆`;
   const box=$("recordList");
-  if(!rows.length){ box.innerHTML='<div class="empty">還沒有紀錄。到「頻道」記一筆吧。</div>'; return; }
+  if(!rows.length){ box.innerHTML='<div class="empty">這個篩選目前沒有紀錄。</div>'; return; }
   box.innerHTML=rows.map(r=>{
     const b=bossByKey[r.boss];
     return `<div class="rec">
@@ -518,7 +528,7 @@ window.addEventListener("pointerdown",ensureAudio,{once:true});
 const savedNick=localStorage.getItem("bt_nick");
 if(savedNick) $("boardName").value=savedNick;
 $("soundBtn").textContent=soundOn?"🔊":"🔇"; $("soundBtn").classList.toggle("off",!soundOn);
-buildPicker(); buildGrid(); buildPatrolChips(); setCurrentBoss(currentBoss);
+buildPicker(); buildGrid(); buildPatrolChips(); buildRecFilter(); setCurrentBoss(currentBoss);
 tick(); setInterval(tick,1000);
 </script>
 </body>
