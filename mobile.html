@@ -185,6 +185,7 @@
     <div class="fld"><label for="chInput">頻道 CH（1~60）</label><input id="chInput" type="number" inputmode="numeric" min="1" max="60" placeholder="輸入頻道"></div>
     <div class="fld"><label for="killerInput">擊殺者</label><input id="killerInput" type="text" maxlength="16" placeholder="預設用你的 ID"></div>
     <button class="big-go" id="recordBtn" type="button">⚔ 記錄擊殺</button>
+    <button class="big-go" id="delChBtn" type="button" style="background:#3a1c28;color:var(--ember);margin-top:10px;">🗑 刪除此頻道紀錄</button>
     <div class="est" id="estimate">現在記錄的話,預估重生：<b>—</b></div>
 
     <div class="legend">
@@ -320,7 +321,7 @@ function setCurrentBoss(key){
   $("trackPort").innerHTML=spriteTag(b,"","emoji",26);
   const im=$("trackPort").querySelector("img"); if(im){im.style.width="38px";im.style.height="38px";im.style.objectFit="contain";}
   $("trackName").textContent=b.name; $("trackMap").textContent=b.map; $("trackRt").textContent=rtLabel(b);
-  updateEstimate(); renderGrid();
+  updateEstimate(); renderGrid(); renderPatrol(serverNow()); renderHero(serverNow());
 }
 function updateEstimate(){
   const b=bossByKey[currentBoss], now=serverNow(), e=$("estimate");
@@ -344,9 +345,9 @@ async function clearAll(){ if(!confirm("要清掉全部紀錄嗎？")) return; t
 const sortedRows = now => Object.entries(kills).filter(([,it])=>it&&bossByKey[it.boss]).map(([id,it])=>({id,...it,st:stateOf(it,now),earliest:windowOf(it).earliest})).sort((a,b)=>a.earliest-b.earliest);
 
 function renderHero(now){
-  const hero=$("hero"); const next=sortedRows(now)[0];
+  const hero=$("hero"); const b0=bossByKey[currentBoss]; const next=sortedRows(now).find(it=>it.boss===currentBoss);
   hero.classList.remove("is-overdue","is-window");
-  if(!next){ hero.innerHTML=`<div class="empty">現在沒有王在倒數。到「頻道」記一筆,這裡就會告訴你下一隻。</div>`; return; }
+  if(!next){ hero.innerHTML=`<div class="empty">「${escapeHtml(b0.name)}」目前沒有紀錄。到「頻道」記一筆就會顯示下一隻。</div>`; return; }
   const b=bossByKey[next.boss];
   if(next.st==="overdue") hero.classList.add("is-overdue"); else if(next.st==="window") hero.classList.add("is-window");
   const line = next.st==="overdue" ? "已重生,快去 CH"+next.ch : next.st==="window" ? "重生區間,盯 CH"+next.ch : next.st==="soon" ? "快出現了" : "倒數中";
@@ -368,20 +369,20 @@ function renderGrid(){
 function buildPatrolChips(){
   const chips=$("pchips");
   chips.innerHTML=BOSSES.map(b=>`<button class="pchip" id="pchip-${b.key}" data-pb="${b.key}">${b.emoji} ${escapeHtml(b.name)}<span class="u" id="chipu-${b.key}" style="display:none"></span></button>`).join("");
-  chips.querySelectorAll("[data-pb]").forEach(btn=>btn.addEventListener("click",()=>{ patrolBoss=btn.dataset.pb; renderPatrol(serverNow()); }));
+  chips.querySelectorAll("[data-pb]").forEach(btn=>btn.addEventListener("click",()=>setCurrentBoss(btn.dataset.pb)));
 }
 function updateChips(now){
   BOSSES.forEach(b=>{
     const chip=$(`pchip-${b.key}`); if(!chip) return;
-    chip.classList.toggle("on",b.key===patrolBoss);
+    chip.classList.toggle("on",b.key===currentBoss);
     let urgent=0; for(let i=1;i<=CHANNELS;i++){ const it=kills[killId(b.key,i)]; if(it){ const st=stateOf(it,now); if(st==="overdue"||st==="window"||st==="soon") urgent++; } }
     const u=$(`chipu-${b.key}`); if(u){ u.textContent=urgent||""; u.style.display=urgent?"":"none"; }
   });
 }
 function renderPatrol(now){
   updateChips(now);
-  const b0=bossByKey[patrolBoss];
-  const items=sortedRows(now).filter(it=>it.boss===patrolBoss && ["overdue","window","soon"].includes(it.st));
+  const b0=bossByKey[currentBoss];
+  const items=sortedRows(now).filter(it=>it.boss===currentBoss && ["overdue","window","soon"].includes(it.st));
   $("patrolCount").textContent=`${b0.name}・${items.length} 個`;
   const box=$("patrol");
   if(!items.length){ box.innerHTML=`<div class="empty">「${escapeHtml(b0.name)}」目前沒有快出現的頻道。<br>點上面其他王切換。</div>`; return; }
@@ -439,6 +440,14 @@ onValue(boardRef,s=>{
 
 /* events */
 $("recordBtn").addEventListener("click",()=>recordKill(currentBoss,$("chInput").value));
+$("delChBtn").addEventListener("click",()=>{
+  const ch=Number($("chInput").value);
+  if(!ch||ch<1||ch>CHANNELS){ alert("請先在上面「頻道 CH」輸入要刪除的頻道 (1~60)"); return; }
+  const b=bossByKey[currentBoss]; const id=killId(currentBoss,ch);
+  if(!kills[id]){ alert(`${b.name} CH${ch} 目前沒有紀錄`); return; }
+  if(!confirm(`確定刪除「${b.name} CH${ch}」的計時紀錄嗎？`)) return;
+  deleteKill(id);
+});
 $("chInput").addEventListener("keydown",e=>{ if(e.key==="Enter") recordKill(currentBoss,$("chInput").value); });
 $("clearAllBtn").addEventListener("click",clearAll);
 $("boardForm").addEventListener("submit",async e=>{

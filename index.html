@@ -299,6 +299,7 @@
           <div><label for="killerInput">擊殺者</label><input id="killerInput" type="text" maxlength="16" placeholder="預設用暱稱"></div>
           <button class="btn-go" id="recordBtn" type="button">記錄擊殺</button>
         </div>
+        <button class="btn-danger" id="delChBtn" type="button" style="width:100%;margin-top:8px;">🗑 刪除此頻道紀錄（用上面選的 BOSS + 頻道）</button>
         <div class="estimate" id="estimate">現在記錄的話,預估重生：<b>—</b></div>
       </section>
 
@@ -523,6 +524,7 @@ function setCurrentBoss(key) {
   updateEstimate();
   renderGrid();
   renderPatrol(serverNow());
+  renderHero(serverNow());
 }
 function updateEstimate() {
   const b = bossByKey[currentBoss], now = serverNow(), est = $("estimate");
@@ -562,10 +564,11 @@ function sortedRows(now) {
 }
 function renderHero(now) {
   const hero = $("hero");
-  const next = sortedRows(now)[0];
+  const b0 = bossByKey[currentBoss];
+  const next = sortedRows(now).find(it => it.boss === currentBoss);
   hero.classList.remove("is-overdue", "is-window");
   if (!next) {
-    hero.innerHTML = `<div class="hero-empty" id="heroEmpty">現在沒有王在倒數。打倒一隻王、在下面記一筆,這裡就會告訴你下一隻在哪。</div>`;
+    hero.innerHTML = `<div class="hero-empty" id="heroEmpty">「${escapeHtml(b0.name)}」目前沒有紀錄。在下面記一筆,這裡就會顯示下一隻在哪。</div>`;
     return;
   }
   const b = bossByKey[next.boss];
@@ -731,6 +734,15 @@ $("boardForm").addEventListener("submit", async e => {
 $("clearAllBtn").addEventListener("click", clearAll);
 $("bossSelect").addEventListener("change", e => setCurrentBoss(e.target.value));
 $("recordBtn").addEventListener("click", () => recordKill(currentBoss, $("chInput").value));
+$("delChBtn").addEventListener("click", () => {
+  const ch = Number($("chInput").value);
+  if (!ch || ch < 1 || ch > CHANNELS) { alert("請先在上面「頻道 CH」輸入要刪除的頻道 (1~60)"); return; }
+  const b = bossByKey[currentBoss];
+  const id = killId(currentBoss, ch);
+  if (!kills[id]) { alert(`${b.name} CH${ch} 目前沒有紀錄`); return; }
+  if (!confirm(`確定刪除「${b.name} CH${ch}」的計時紀錄嗎？`)) return;
+  deleteKill(id);
+});
 $("chInput").addEventListener("keydown", e => { if (e.key === "Enter") recordKill(currentBoss, $("chInput").value); });
 const nickEl = $("nick");
 nickEl.addEventListener("change", () => localStorage.setItem("bt_nick", nickEl.value.trim()));
