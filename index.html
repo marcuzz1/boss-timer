@@ -22,127 +22,106 @@
     --purple: #9d7bff;
   }
 
+  html, body { height: 100%; }
   body {
     margin: 0;
     background: radial-gradient(1200px 600px at 50% -10%, #16202c 0%, var(--bg) 60%);
     color: var(--text);
     font-family: "Microsoft JhengHei", Arial, sans-serif;
-    min-height: 100vh;
   }
 
-  .wrap { width: min(1180px, 96%); margin: 18px auto 48px; }
+  .app { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-  .panel {
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+  .sectionTitle { font-size: 15px; font-weight: 900; margin: 0; }
+  .titleRow { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .count-pill { background: #0f1822; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 12px; color: var(--muted); font-weight: 700; }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    display: flex; align-items: center; gap: 14px;
+    padding: 8px 16px; border-bottom: 1px solid var(--line);
     background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    padding: 16px;
-    margin-bottom: 16px;
   }
-
-  /* ---------- header ---------- */
-  .header { text-align: center; }
-  .header h1 { margin: 0 0 4px; font-size: 30px; letter-spacing: 1px; }
-  .header .sub { color: var(--muted); font-size: 14px; margin-bottom: 12px; }
-  .clock {
-    font-family: Consolas, monospace;
-    font-size: 40px;
-    font-weight: 900;
-    color: #fff;
-    letter-spacing: 2px;
+  .topbar .brand { font-size: 20px; font-weight: 900; white-space: nowrap; }
+  .topbar .clock { font-family: Consolas, monospace; font-size: 26px; font-weight: 900; color: #fff; letter-spacing: 1px; }
+  .topbar .spacer { flex: 1; }
+  .topbar input {
+    width: 150px; border: 1px solid var(--line2); background: #0f1620; color: #fff;
+    border-radius: 8px; padding: 8px 10px; font-size: 13px; outline: none;
   }
-  .conn { margin-top: 6px; font-weight: 800; font-size: 14px; color: var(--orange); }
+  .topbar input:focus { border-color: var(--accent); }
+  .conn { font-weight: 800; font-size: 13px; color: var(--orange); white-space: nowrap; }
   .conn.on { color: var(--green); }
-
-  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 700; }
-  input, select {
-    width: 100%;
-    border: 1px solid var(--line2);
-    background: #0f1620;
-    color: #fff;
-    border-radius: 9px;
-    padding: 11px 12px;
-    font-size: 14px;
-    outline: none;
-  }
-  input:focus, select:focus { border-color: var(--accent); }
-
   button {
-    border: none; border-radius: 9px; padding: 11px 16px;
-    font-weight: 800; cursor: pointer; font-size: 14px; color: #fff;
+    border: none; border-radius: 8px; padding: 8px 12px;
+    font-weight: 800; cursor: pointer; font-size: 13px; color: #fff;
   }
   .btn-primary { background: var(--accent); }
   .btn-green { background: var(--green); color: #08130d; }
   .btn-red { background: var(--red); }
+  .btn-ghost { background: #2a3745; color: #cfe0ee; }
+  .btn-ghost.off { color: var(--muted); }
 
-  .sectionTitle { font-size: 18px; font-weight: 900; margin: 0 0 4px; }
-  .sectionSub { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
-
-  /* ---------- nickname bar ---------- */
-  .nickBar { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; }
-  .nickBar .field { flex: 0 1 240px; }
+  /* ---------- main grid ---------- */
+  .main {
+    flex: 1; min-height: 0;
+    display: grid; grid-template-columns: 1.75fr 1fr; gap: 12px;
+    padding: 12px; overflow: hidden;
+  }
+  .col { min-height: 0; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
 
   /* ---------- boss list ---------- */
-  .bossList { display: flex; flex-wrap: wrap; gap: 10px; }
+  .bossList { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
   .bossCard {
-    flex: 1 1 150px;
-    background: var(--panel2);
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    padding: 12px;
-    cursor: pointer;
-    transition: .15s ease;
-    text-align: center;
+    flex: 0 0 auto; width: 96px;
+    background: var(--panel2); border: 1px solid var(--line); border-radius: 10px;
+    padding: 8px 6px; cursor: pointer; transition: .12s ease; text-align: center;
   }
   .bossCard:hover { border-color: var(--line2); transform: translateY(-2px); }
-  .bossCard.active {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 1px var(--accent) inset, 0 6px 18px rgba(77,132,255,.18);
-    background: #182640;
-  }
-  .bossCard .emoji { font-size: 34px; line-height: 1; }
-  .bossCard .bimg { width: 46px; height: 46px; object-fit: contain; image-rendering: -webkit-optimize-contrast; }
-  .bossCard .bname { font-weight: 900; font-size: 16px; margin-top: 6px; }
-  .bossCard .brt { font-size: 12px; color: var(--muted); margin-top: 3px; }
-  .bossCard .bmap { font-size: 11px; color: #6f8091; margin-top: 2px; }
-  .bossCard .bcount { font-size: 12px; color: var(--green); margin-top: 4px; font-weight: 700; min-height: 14px; }
+  .bossCard.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; background: #182640; }
+  .bossCard .emoji { font-size: 30px; line-height: 1; }
+  .bossCard .bimg { width: 40px; height: 40px; object-fit: contain; }
+  .bossCard .bname { font-weight: 900; font-size: 13px; margin-top: 4px; }
+  .bossCard .brt { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .bossCard .bcount { font-size: 11px; color: var(--green); margin-top: 2px; font-weight: 700; min-height: 13px; }
 
-  .selBossImg { width: 52px; height: 52px; object-fit: contain; margin-right: 4px; }
-
-  /* ---------- record form ---------- */
-  .recordGrid { display: grid; grid-template-columns: 1.4fr 1fr 1.4fr auto; gap: 10px; align-items: end; }
-  .tracking {
-    background: var(--panel2); border: 1px solid var(--line);
-    border-radius: 10px; padding: 10px 14px; margin-bottom: 12px;
-    display: flex; gap: 18px; flex-wrap: wrap; align-items: center;
-  }
-  .tracking .k { color: var(--muted); font-size: 12px; }
-  .tracking .v { font-weight: 900; font-size: 18px; }
+  /* ---------- record ---------- */
+  .tracking { display: flex; gap: 14px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+  .selBossImg { width: 46px; height: 46px; object-fit: contain; }
+  .tracking .k { color: var(--muted); font-size: 11px; }
+  .tracking .v { font-weight: 900; font-size: 16px; }
   .tracking .v.boss { color: var(--accent); }
-  .estimate { margin-top: 10px; color: var(--muted); font-size: 13px; }
+  .recordGrid { display: grid; grid-template-columns: 1.3fr .8fr 1.1fr auto; gap: 8px; align-items: end; }
+  .field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 3px; font-weight: 700; }
+  .field input, .field select {
+    width: 100%; border: 1px solid var(--line2); background: #0f1620; color: #fff;
+    border-radius: 8px; padding: 9px 10px; font-size: 13px; outline: none;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .estimate { margin-top: 8px; color: var(--muted); font-size: 12px; }
   .estimate b { color: #cfe0ee; }
 
   /* ---------- channel grid ---------- */
-  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
-  .legend span { display: inline-flex; align-items: center; gap: 6px; }
-  .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .gridPanel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; font-size: 12px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
   .dot.overdue { background: var(--red); }
   .dot.window { background: var(--purple); }
   .dot.soon { background: var(--orange); }
   .dot.counting { background: var(--green); }
   .dot.idle { background: #46586a; }
 
-  .grid { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px; }
+  .grid { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 5px; align-content: start; }
   .cell {
-    position: relative; min-height: 66px;
-    background: #0f1822; border: 1px solid #25323f; border-radius: 8px;
-    cursor: pointer; transition: .12s ease; padding: 6px 4px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    user-select: none;
+    min-height: 46px; background: #0f1822; border: 1px solid #25323f; border-radius: 7px;
+    cursor: pointer; transition: .12s ease; padding: 4px 2px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; user-select: none;
   }
-  .cell:hover { border-color: var(--line2); transform: translateY(-1px); }
-  .cell .ch { font-size: 15px; font-weight: 900; color: #dfeaf3; }
-  .cell .cd { font-size: 13px; font-weight: 800; font-family: Consolas, monospace; margin-top: 2px; color: #cfe0ee; }
+  .cell:hover { border-color: var(--line2); }
+  .cell .ch { font-size: 13px; font-weight: 900; color: #dfeaf3; }
+  .cell .cd { font-size: 12px; font-weight: 800; font-family: Consolas, monospace; margin-top: 1px; color: #cfe0ee; }
   .cell.selected { outline: 2px solid var(--accent); }
   .cell.counting { border-color: var(--green); background: #10241c; }
   .cell.counting .cd { color: var(--green); }
@@ -153,155 +132,129 @@
   .cell.overdue { border-color: var(--red); background: #261414; animation: pulse 1.4s infinite; }
   .cell.overdue .cd { color: var(--red); }
   @keyframes pulse { 0%,100%{ box-shadow: 0 0 0 0 rgba(239,91,91,.35);} 50%{ box-shadow: 0 0 0 5px rgba(239,91,91,0);} }
-  .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+  .hint { color: var(--muted); font-size: 11px; margin-top: 6px; }
 
   /* ---------- patrol ---------- */
-  .patrolList { display: flex; flex-direction: column; gap: 8px; }
+  .patrolPanel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .patrolList { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
   .patrolItem {
-    display: grid; grid-template-columns: auto 1fr auto auto; gap: 12px; align-items: center;
-    background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px;
+    display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center;
+    background: var(--panel2); border: 1px solid var(--line); border-radius: 9px; padding: 7px 10px;
   }
-  .patrolItem .pemoji { font-size: 22px; }
-  .patrolItem .pimg { width: 30px; height: 30px; object-fit: contain; }
-  .patrolItem .pname { font-weight: 800; }
-  .patrolItem .pch { color: var(--muted); font-size: 13px; }
-  .patrolItem .pcd { font-family: Consolas, monospace; font-weight: 900; font-size: 18px; }
-  .patrolItem.soon { border-color: var(--orange); }
-  .patrolItem.soon .pcd { color: var(--orange); }
-  .patrolItem.window { border-color: var(--purple); }
-  .patrolItem.window .pcd { color: var(--purple); }
-  .patrolItem.overdue { border-color: var(--red); }
-  .patrolItem.overdue .pcd { color: var(--red); }
-  .empty { color: var(--muted); text-align: center; padding: 18px; }
+  .patrolItem .pemoji { font-size: 20px; }
+  .patrolItem .pimg { width: 28px; height: 28px; object-fit: contain; }
+  .patrolItem .pname { font-weight: 800; font-size: 13px; }
+  .patrolItem .pch { color: var(--muted); font-size: 12px; }
+  .patrolItem .pcd { font-family: Consolas, monospace; font-weight: 900; font-size: 16px; }
+  .patrolItem.soon { border-color: var(--orange); } .patrolItem.soon .pcd { color: var(--orange); }
+  .patrolItem.window { border-color: var(--purple); } .patrolItem.window .pcd { color: var(--purple); }
+  .patrolItem.overdue { border-color: var(--red); } .patrolItem.overdue .pcd { color: var(--red); }
+  .empty { color: var(--muted); text-align: center; padding: 14px; font-size: 13px; }
 
-  /* ---------- records table ---------- */
-  .tableWrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px; }
-  th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--line); }
-  th { color: var(--muted); font-weight: 700; white-space: nowrap; }
-  td .stateTag { padding: 2px 8px; border-radius: 999px; font-weight: 800; font-size: 12px; }
+  /* ---------- records ---------- */
+  .recordsPanel { flex: 1.1; min-height: 0; display: flex; flex-direction: column; }
+  .tableWrap { flex: 1; min-height: 0; overflow: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 700; position: sticky; top: 0; background: var(--panel); }
+  td .stateTag { padding: 2px 7px; border-radius: 999px; font-weight: 800; font-size: 11px; }
   .tag-counting { background: rgba(46,205,136,.18); color: var(--green); }
   .tag-soon { background: rgba(246,164,50,.18); color: var(--orange); }
   .tag-window { background: rgba(157,123,255,.18); color: var(--purple); }
   .tag-overdue { background: rgba(239,91,91,.18); color: var(--red); }
-  .delBtn { background: #3a2530; color: var(--red); padding: 6px 10px; font-size: 12px; }
+  .delBtn { background: #3a2530; color: var(--red); padding: 4px 8px; font-size: 11px; }
 
-  .count-pill { background: #0f1822; border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; font-size: 13px; color: var(--muted); font-weight: 700; }
-  .titleRow { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
-
-  .footNote { color: var(--muted); font-size: 12px; text-align: center; margin-top: 4px; }
-
+  /* ---------- responsive fallback ---------- */
   @media (max-width: 900px) {
-    .recordGrid { grid-template-columns: 1fr 1fr; }
+    .app { height: auto; overflow: visible; }
+    .main { grid-template-columns: 1fr; overflow: visible; }
+    .col { overflow: visible; }
+    .grid, .patrolList, .tableWrap { overflow: visible; }
     .grid { grid-template-columns: repeat(6, minmax(0,1fr)); }
+    .recordGrid { grid-template-columns: 1fr 1fr; }
   }
-  @media (max-width: 560px) {
-    .recordGrid { grid-template-columns: 1fr; }
+  @media (max-width: 520px) {
     .grid { grid-template-columns: repeat(4, minmax(0,1fr)); }
-    .clock { font-size: 32px; }
+    .topbar { flex-wrap: wrap; }
   }
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="app">
 
-  <!-- Header -->
-  <div class="panel header">
-    <h1>⚔️ BOSS 計時器</h1>
-    <div class="sub">記錄擊殺・多人同步・即時共享</div>
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="brand">⚔️ BOSS 計時器</div>
     <div class="clock" id="clock">--:--:--</div>
+    <div class="spacer"></div>
+    <input id="nick" type="text" maxlength="16" placeholder="你的暱稱">
+    <button class="btn-ghost" id="soundBtn" type="button">🔊 音效：開</button>
+    <button class="btn-red" id="clearAllBtn" type="button">全部清除</button>
     <div class="conn" id="conn">● 尚未連線</div>
   </div>
 
-  <!-- Nickname -->
-  <div class="panel">
-    <div class="nickBar">
-      <div class="field">
-        <label>你的暱稱（記錄擊殺時使用）</label>
-        <input id="nick" type="text" maxlength="16" placeholder="輸入暱稱">
+  <div class="main">
+    <!-- Left column -->
+    <div class="col">
+      <!-- Boss list -->
+      <div class="panel">
+        <div class="titleRow"><div class="sectionTitle">🐾 BOSS 清單</div><span class="count-pill">點圖片切換</span></div>
+        <div class="bossList" id="bossList"></div>
+      </div>
+
+      <!-- Record -->
+      <div class="panel">
+        <div class="tracking">
+          <img class="selBossImg" id="selBossImg" alt="">
+          <div><div class="k">目前追蹤</div><div class="v boss" id="trackName">—</div></div>
+          <div><div class="k">出沒地圖</div><div class="v" id="trackMap" style="font-size:14px;">—</div></div>
+          <div><div class="k">重生時間</div><div class="v" id="trackRt">—</div></div>
+        </div>
+        <div class="recordGrid">
+          <div class="field"><label>選擇 BOSS</label><select id="bossSelect"></select></div>
+          <div class="field"><label>頻道 CH</label><input id="chInput" type="number" min="1" max="60" placeholder="1~60"></div>
+          <div class="field"><label>擊殺者（選填）</label><input id="killerInput" type="text" maxlength="16" placeholder="預設用暱稱"></div>
+          <button class="btn-green" id="recordBtn">⚔ 記錄擊殺</button>
+        </div>
+        <div class="estimate" id="estimate">預估重生時間：<b>—</b></div>
+      </div>
+
+      <!-- Channel grid -->
+      <div class="panel gridPanel">
+        <div class="titleRow"><div class="sectionTitle">📺 頻道選擇（CH1～CH60）</div></div>
+        <div class="legend">
+          <span><i class="dot overdue"></i>已過重生</span>
+          <span><i class="dot window"></i>重生區間</span>
+          <span><i class="dot soon"></i>即將重生</span>
+          <span><i class="dot counting"></i>計時中</span>
+          <span><i class="dot idle"></i>空閒</span>
+        </div>
+        <div class="grid" id="grid"></div>
+        <div class="hint">💡 單擊選取並帶入頻道；雙擊直接記錄擊殺（使用目前追蹤的 BOSS 與你的暱稱）</div>
       </div>
     </div>
-  </div>
 
-  <!-- Boss list -->
-  <div class="panel">
-    <div class="sectionTitle">🐾 BOSS 清單</div>
-    <div class="sectionSub">點圖片直接切換目前追蹤的 BOSS,下方頻道格會顯示該 BOSS 的狀態。</div>
-    <div class="bossList" id="bossList"></div>
-  </div>
-
-  <!-- Record -->
-  <div class="panel">
-    <div class="sectionTitle">🩸 BOSS 擊殺</div>
-    <div class="sectionSub">選擇 BOSS・輸入頻道・記錄擊殺</div>
-    <div class="tracking">
-      <img class="selBossImg" id="selBossImg" alt="">
-      <div><div class="k">目前追蹤</div><div class="v boss" id="trackName">—</div></div>
-      <div><div class="k">出沒地圖</div><div class="v" id="trackMap" style="font-size:15px;">—</div></div>
-      <div><div class="k">重生時間</div><div class="v" id="trackRt">—</div></div>
-    </div>
-    <div class="recordGrid">
-      <div class="field">
-        <label>選擇 BOSS</label>
-        <select id="bossSelect"></select>
+    <!-- Right column -->
+    <div class="col">
+      <!-- Patrol -->
+      <div class="panel patrolPanel">
+        <div class="titleRow"><div class="sectionTitle">🎯 優先巡查</div><span class="count-pill" id="patrolCount">0 筆</span></div>
+        <div class="patrolList" id="patrolList"><div class="empty">目前沒有即將重生的頻道</div></div>
       </div>
-      <div class="field">
-        <label>頻道 CH</label>
-        <input id="chInput" type="number" min="1" max="60" placeholder="1~60">
+
+      <!-- Records -->
+      <div class="panel recordsPanel">
+        <div class="titleRow"><div class="sectionTitle">▤ 全部紀錄</div><span class="count-pill" id="recordCount">0 筆</span></div>
+        <div class="tableWrap">
+          <table>
+            <thead><tr><th>BOSS</th><th>CH</th><th>擊殺者</th><th>擊殺</th><th>狀態</th><th>剩餘</th><th>操作</th></tr></thead>
+            <tbody id="recordBody">
+              <tr><td colspan="7" class="empty">記錄擊殺後,這裡會即時同步顯示</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-      <div class="field">
-        <label>擊殺者（選填）</label>
-        <input id="killerInput" type="text" maxlength="16" placeholder="預設使用暱稱">
-      </div>
-      <button class="btn-green" id="recordBtn">⚔ 記錄擊殺</button>
     </div>
-    <div class="estimate" id="estimate">預估重生時間：<b>—</b></div>
-  </div>
-
-  <!-- Channel grid -->
-  <div class="panel">
-    <div class="sectionTitle">📺 頻道選擇（CH1～CH60）</div>
-    <div class="legend">
-      <span><i class="dot overdue"></i>已過重生</span>
-      <span><i class="dot window"></i>重生區間</span>
-      <span><i class="dot soon"></i>即將重生</span>
-      <span><i class="dot counting"></i>計時中</span>
-      <span><i class="dot idle"></i>空閒</span>
-    </div>
-    <div class="grid" id="grid"></div>
-    <div class="hint">💡 單擊選取並帶入頻道；雙擊直接記錄擊殺（使用目前追蹤的 BOSS 與你的暱稱）</div>
-  </div>
-
-  <!-- Patrol -->
-  <div class="panel">
-    <div class="titleRow">
-      <div class="sectionTitle" style="margin:0;">🎯 優先巡查</div>
-      <span class="count-pill" id="patrolCount">0 筆</span>
-    </div>
-    <div class="sectionSub">已進入重生區間、即將重生或已過重生的頻道會排在最前面。</div>
-    <div class="patrolList" id="patrolList"><div class="empty">目前沒有即將重生的頻道</div></div>
-  </div>
-
-  <!-- Records table -->
-  <div class="panel">
-    <div class="titleRow">
-      <div class="sectionTitle" style="margin:0;">▤ 全部紀錄</div>
-      <span class="count-pill" id="recordCount">0 筆</span>
-      <button class="btn-red" id="clearAllBtn" style="margin-left:auto;">全部清除</button>
-    </div>
-    <div class="tableWrap">
-      <table>
-        <thead>
-          <tr>
-            <th>BOSS</th><th>CH</th><th>擊殺者</th><th>擊殺時間</th><th>狀態</th><th>剩餘</th><th>操作</th>
-          </tr>
-        </thead>
-        <tbody id="recordBody">
-          <tr><td colspan="7" class="empty">記錄一筆擊殺後,這裡會即時同步顯示大家的紀錄</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="footNote">◷ 資料即時同步 ｜ 與好友一起巡王不卡頓</div>
   </div>
 
 </div>
@@ -342,8 +295,9 @@ const BOSSES = [
 const bossByKey = Object.fromEntries(BOSSES.map(b => [b.key, b]));
 
 const CHANNELS = 60;
-const SOON_MS = 5 * 60 * 1000;   // 「即將重生」警示區間
+const SOON_MS = 5 * 60 * 1000;
 const KILLS_PATH = "bossTimer/kills";
+const MIN = 60 * 1000;
 
 const killsRef = ref(db, KILLS_PATH);
 const serverOffsetRef = ref(db, ".info/serverTimeOffset");
@@ -351,55 +305,36 @@ const connectedRef = ref(db, ".info/connected");
 
 let serverTimeOffset = 0;
 let currentBoss = BOSSES[0].key;
-let kills = {};                  // { "bossKey_ch": {boss, bossName, ch, killer, killTime} }
+let kills = {};
 let selectedCh = null;
 
 const serverNow = () => Date.now() + serverTimeOffset;
 const killId = (bossKey, ch) => `${bossKey}_${ch}`;
-const MIN = 60 * 1000;
 
 /* ---------- helpers ---------- */
 function isFloating(b) { return b.respawnMin !== b.respawnMax; }
-function rtLabel(b) {
-  return isFloating(b) ? `${b.respawnMin}~${b.respawnMax} 分` : `${b.respawnMin} 分`;
-}
+function rtLabel(b) { return isFloating(b) ? `${b.respawnMin}~${b.respawnMax} 分` : `${b.respawnMin} 分`; }
 function windowOf(item) {
   const b = bossByKey[item.boss];
-  return {
-    earliest: item.killTime + b.respawnMin * MIN,
-    latest:   item.killTime + b.respawnMax * MIN
-  };
+  return { earliest: item.killTime + b.respawnMin * MIN, latest: item.killTime + b.respawnMax * MIN };
 }
-
-function fmtClock(ts) {
-  const d = new Date(ts), p = n => String(n).padStart(2, "0");
-  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-}
-function fmtHM(ts) {
-  const d = new Date(ts), p = n => String(n).padStart(2, "0");
-  return `${p(d.getHours())}:${p(d.getMinutes())}`;
-}
+function fmtClock(ts) { const d = new Date(ts), p = n => String(n).padStart(2, "0"); return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; }
+function fmtHM(ts) { const d = new Date(ts), p = n => String(n).padStart(2, "0"); return `${p(d.getHours())}:${p(d.getMinutes())}`; }
 function fmtCountdown(ms) {
   if (ms <= 0) return "00:00";
-  const s = Math.ceil(ms / 1000);
-  const p = n => String(n).padStart(2, "0");
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
+  const s = Math.ceil(ms / 1000), p = n => String(n).padStart(2, "0");
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
   return h > 0 ? `${p(h)}:${p(m)}:${p(sec)}` : `${p(m)}:${p(sec)}`;
 }
-
 function stateOf(item, now) {
   if (!item || !bossByKey[item.boss]) return "idle";
   const { earliest, latest } = windowOf(item);
-  if (now >= latest) return "overdue";      // 已過最晚重生時間
-  if (now >= earliest) return "window";     // 重生區間內（浮動王）
+  if (now >= latest) return "overdue";
+  if (now >= earliest) return "window";
   if (earliest - now <= SOON_MS) return "soon";
   return "counting";
 }
 const STATE_LABEL = { idle: "空閒", counting: "計時中", soon: "即將重生", window: "重生區間", overdue: "已過重生" };
-
-// 頻道格 / 表格顯示的剩餘文字
 function remainText(item, now) {
   const st = stateOf(item, now);
   const { earliest, latest } = windowOf(item);
@@ -408,37 +343,94 @@ function remainText(item, now) {
   return fmtCountdown(earliest - now);
 }
 
-/* ---------- build static UI ---------- */
+/* ---------- sound alarm ---------- */
+let soundOn = localStorage.getItem("bt_sound") !== "off";
+let audioCtx = null;
+const customAudio = new Audio("usagi.mp3");
+let customOk = false;
+customAudio.addEventListener("canplaythrough", () => { customOk = true; });
+customAudio.addEventListener("error", () => { customOk = false; });
+
+function ensureAudio() {
+  if (!audioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) audioCtx = new AC();
+  }
+  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+}
+// 合成一個約 1 秒的可愛「叫聲」（烏薩其音檔缺席時的備援）
+function synthAlarm() {
+  ensureAudio();
+  if (!audioCtx) return;
+  const ctx = audioCtx, t0 = ctx.currentTime;
+  const notes = [[880, 0, 0.16], [1245, 0.16, 0.16], [1046, 0.34, 0.16], [1568, 0.52, 0.45]];
+  notes.forEach(([f, st, du]) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "triangle"; o.frequency.setValueAtTime(f, t0 + st);
+    o.frequency.linearRampToValueAtTime(f * 1.05, t0 + st + du);
+    o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0, t0 + st);
+    g.gain.linearRampToValueAtTime(0.25, t0 + st + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + st + du);
+    o.start(t0 + st); o.stop(t0 + st + du + 0.03);
+  });
+}
+function playAlarm() {
+  if (!soundOn) return;
+  if (customOk) {
+    customAudio.currentTime = 0;
+    const p = customAudio.play();
+    if (p) p.catch(() => synthAlarm());
+    // 只播 1 秒
+    setTimeout(() => { try { customAudio.pause(); } catch (e) {} }, 1000);
+  } else {
+    synthAlarm();
+  }
+}
+
+// 追蹤每個頻道是否已提醒過（避免重播 / 載入舊資料時誤響）
+const knownKill = new Set();   // `${id}:${killTime}`
+const alerted = new Set();
+function checkAlarms(now) {
+  for (const [id, it] of Object.entries(kills)) {
+    if (!it || !bossByKey[it.boss]) continue;
+    const tag = `${id}:${it.killTime}`;
+    const past = now >= windowOf(it).earliest;   // 到達最早重生時間 = 時間到
+    if (!knownKill.has(tag)) {
+      knownKill.add(tag);
+      if (past) alerted.add(tag);   // 頁面剛載入時已過期的不補響
+    }
+    if (past && !alerted.has(tag)) {
+      alerted.add(tag);
+      playAlarm();
+    }
+  }
+}
+
+/* ---------- build UI ---------- */
 function buildBossList() {
   const list = document.getElementById("bossList");
   const sel = document.getElementById("bossSelect");
-  list.innerHTML = "";
-  sel.innerHTML = "";
+  list.innerHTML = ""; sel.innerHTML = "";
   BOSSES.forEach(b => {
     const card = document.createElement("div");
-    card.className = "bossCard";
-    card.id = `boss-${b.key}`;
+    card.className = "bossCard"; card.id = `boss-${b.key}`;
     card.innerHTML = `
-      <img class="bimg" id="bimg-${b.key}" src="${b.img}" alt="${b.name}">
-      <span class="emoji" id="bemoji-${b.key}" style="display:none;">${b.emoji}</span>
+      ${b.img ? `<img class="bimg" id="bimg-${b.key}" src="${b.img}" alt="${b.name}">` : ""}
+      <span class="emoji" id="bemoji-${b.key}" style="${b.img ? "display:none;" : ""}">${b.emoji}</span>
       <div class="bname">${b.name}</div>
-      <div class="brt">重生 ${rtLabel(b)}</div>
-      <div class="bmap">${b.map}</div>
+      <div class="brt">${rtLabel(b)}</div>
       <div class="bcount" id="bosscount-${b.key}"></div>`;
     card.addEventListener("click", () => setCurrentBoss(b.key));
     list.appendChild(card);
-
     const bimg = card.querySelector(`#bimg-${b.key}`);
-    bimg.addEventListener("error", () => {
+    if (bimg) bimg.addEventListener("error", () => {
       bimg.style.display = "none";
       const em = document.getElementById(`bemoji-${b.key}`);
       if (em) em.style.display = "inline";
     });
-
     const opt = document.createElement("option");
-    opt.value = b.key;
-    opt.textContent = b.name;
-    sel.appendChild(opt);
+    opt.value = b.key; opt.textContent = b.name; sel.appendChild(opt);
   });
   sel.value = currentBoss;
 }
@@ -448,14 +440,9 @@ function buildGrid() {
   grid.innerHTML = "";
   for (let i = 1; i <= CHANNELS; i++) {
     const cell = document.createElement("div");
-    cell.className = "cell";
-    cell.id = `cell-${i}`;
+    cell.className = "cell"; cell.id = `cell-${i}`;
     cell.innerHTML = `<div class="ch">CH${i}</div><div class="cd" id="cd-${i}"></div>`;
-    cell.addEventListener("click", () => {
-      selectedCh = i;
-      document.getElementById("chInput").value = i;
-      renderGrid();
-    });
+    cell.addEventListener("click", () => { selectedCh = i; document.getElementById("chInput").value = i; renderGrid(); });
     cell.addEventListener("dblclick", () => recordKill(currentBoss, i));
     grid.appendChild(cell);
   }
@@ -464,14 +451,11 @@ function buildGrid() {
 function setCurrentBoss(key) {
   currentBoss = key;
   document.getElementById("bossSelect").value = key;
-  BOSSES.forEach(b =>
-    document.getElementById(`boss-${b.key}`).classList.toggle("active", b.key === key));
+  BOSSES.forEach(b => document.getElementById(`boss-${b.key}`).classList.toggle("active", b.key === key));
   const b = bossByKey[key];
   const selImg = document.getElementById("selBossImg");
-  selImg.src = b.img;
-  selImg.alt = b.name;
-  selImg.style.display = "";
-  selImg.onerror = () => { selImg.style.display = "none"; };
+  if (b.img) { selImg.src = b.img; selImg.alt = b.name; selImg.style.display = ""; selImg.onerror = () => { selImg.style.display = "none"; }; }
+  else selImg.style.display = "none";
   document.getElementById("trackName").textContent = b.name;
   document.getElementById("trackMap").textContent = b.map;
   document.getElementById("trackRt").textContent = rtLabel(b);
@@ -480,15 +464,12 @@ function setCurrentBoss(key) {
 }
 
 function updateEstimate() {
-  const b = bossByKey[currentBoss];
-  const now = serverNow();
-  const est = document.getElementById("estimate");
+  const b = bossByKey[currentBoss], now = serverNow(), est = document.getElementById("estimate");
   if (isFloating(b)) {
     const e = now + b.respawnMin * MIN, l = now + b.respawnMax * MIN;
     est.innerHTML = `若現在記錄,預估重生：<b>${fmtHM(e)} ~ ${fmtHM(l)}</b>（${b.respawnMin}~${b.respawnMax} 分浮動）`;
   } else {
-    const t = now + b.respawnMin * MIN;
-    est.innerHTML = `若現在記錄,預估重生：<b>${fmtHM(t)}</b>（${b.respawnMin} 分後）`;
+    est.innerHTML = `若現在記錄,預估重生：<b>${fmtHM(now + b.respawnMin * MIN)}</b>（${b.respawnMin} 分後）`;
   }
 }
 
@@ -496,31 +477,20 @@ function updateEstimate() {
 async function recordKill(bossKey, ch) {
   ch = Number(ch);
   if (!ch || ch < 1 || ch > CHANNELS) { alert("請輸入 1~60 的頻道"); return; }
-
   const b = bossByKey[bossKey];
   const nick = document.getElementById("nick").value.trim();
   const killer = (document.getElementById("killerInput").value.trim() || nick || "匿名").slice(0, 16);
-
   try {
     await set(ref(db, `${KILLS_PATH}/${killId(bossKey, ch)}`), {
-      boss: bossKey,
-      bossName: b.name,
-      ch,
-      killer,
-      killTime: serverNow()
+      boss: bossKey, bossName: b.name, ch, killer, killTime: serverNow()
     });
     selectedCh = null;
-  } catch (err) {
-    console.error(err);
-    alert("寫入失敗,請確認 Firebase 規則允許寫入。");
-  }
+  } catch (err) { console.error(err); alert("寫入失敗,請確認 Firebase 規則允許寫入。"); }
 }
-
 async function deleteKill(id) {
   try { await remove(ref(db, `${KILLS_PATH}/${id}`)); }
   catch (err) { console.error(err); alert("刪除失敗,請確認 Firebase 規則。"); }
 }
-
 async function clearAll() {
   if (!confirm("確定要清除全部紀錄嗎？")) return;
   try { await remove(killsRef); }
@@ -529,10 +499,8 @@ async function clearAll() {
 
 /* ---------- render ---------- */
 function escapeHtml(t) {
-  return String(t).replaceAll("&","&amp;").replaceAll("<","&lt;")
-    .replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
+  return String(t).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
 }
-
 function renderGrid() {
   const now = serverNow();
   for (let i = 1; i <= CHANNELS; i++) {
@@ -540,21 +508,18 @@ function renderGrid() {
     const cd = document.getElementById(`cd-${i}`);
     const item = kills[killId(currentBoss, i)];
     const st = stateOf(item, now);
-
     cell.classList.remove("counting", "soon", "window", "overdue", "selected");
     if (st !== "idle") cell.classList.add(st);
     if (selectedCh === i) cell.classList.add("selected");
-
     cd.textContent = st === "idle" ? "" : remainText(item, now);
   }
   BOSSES.forEach(b => {
     let c = 0;
     for (let i = 1; i <= CHANNELS; i++) if (kills[killId(b.key, i)]) c++;
     const el = document.getElementById(`bosscount-${b.key}`);
-    if (el) el.textContent = c ? `追蹤中 ${c} 台` : "";
+    if (el) el.textContent = c ? `${c} 台` : "";
   });
 }
-
 function renderPatrol() {
   const now = serverNow();
   const items = Object.values(kills)
@@ -562,43 +527,31 @@ function renderPatrol() {
     .map(it => ({ ...it, st: stateOf(it, now), earliest: windowOf(it).earliest }))
     .filter(it => it.st === "overdue" || it.st === "window" || it.st === "soon")
     .sort((a, b) => a.earliest - b.earliest);
-
   document.getElementById("patrolCount").textContent = `${items.length} 筆`;
   const box = document.getElementById("patrolList");
-
-  if (items.length === 0) {
-    box.innerHTML = '<div class="empty">目前沒有即將重生的頻道</div>';
-    return;
-  }
+  if (items.length === 0) { box.innerHTML = '<div class="empty">目前沒有即將重生的頻道</div>'; return; }
   box.innerHTML = items.map(it => {
     const b = bossByKey[it.boss];
-    const { earliest, latest } = windowOf(it);
-    const rtInfo = isFloating(b) ? `${fmtHM(earliest)}~${fmtHM(latest)}` : fmtHM(earliest);
+    const imgHtml = b.img
+      ? `<img class="pimg" src="${b.img}" alt="${escapeHtml(b.name)}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pemoji',textContent:'${b.emoji}'}))">`
+      : `<span class="pemoji">${b.emoji}</span>`;
     return `<div class="patrolItem ${it.st}">
-      <img class="pimg" src="${b.img}" alt="${escapeHtml(b.name)}"
-           onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pemoji',textContent:'${b.emoji}'}))">
+      ${imgHtml}
       <div><div class="pname">${escapeHtml(b.name)}</div>
       <div class="pch">CH${it.ch} ｜ ${escapeHtml(it.killer || "匿名")}</div></div>
-      <div class="pch">重生 ${rtInfo}</div>
       <div class="pcd">${remainText(it, now)}</div>
     </div>`;
   }).join("");
 }
-
 function renderRecords() {
   const now = serverNow();
   const rows = Object.entries(kills)
     .filter(([, it]) => it && bossByKey[it.boss])
     .map(([id, it]) => ({ id, ...it, st: stateOf(it, now), earliest: windowOf(it).earliest }))
     .sort((a, b) => a.earliest - b.earliest);
-
   document.getElementById("recordCount").textContent = `${rows.length} 筆`;
   const body = document.getElementById("recordBody");
-
-  if (rows.length === 0) {
-    body.innerHTML = '<tr><td colspan="7" class="empty">記錄一筆擊殺後,這裡會即時同步顯示大家的紀錄</td></tr>';
-    return;
-  }
+  if (rows.length === 0) { body.innerHTML = '<tr><td colspan="7" class="empty">記錄擊殺後,這裡會即時同步顯示</td></tr>'; return; }
   body.innerHTML = rows.map(r => {
     const b = bossByKey[r.boss];
     return `<tr>
@@ -611,20 +564,18 @@ function renderRecords() {
       <td><button class="delBtn" data-del="${r.id}">刪除</button></td>
     </tr>`;
   }).join("");
-
-  body.querySelectorAll("[data-del]").forEach(btn =>
-    btn.addEventListener("click", () => deleteKill(btn.getAttribute("data-del"))));
+  body.querySelectorAll("[data-del]").forEach(btn => btn.addEventListener("click", () => deleteKill(btn.getAttribute("data-del"))));
 }
-
 function renderAll() { renderGrid(); renderPatrol(); renderRecords(); }
 
-/* ---------- clock / connection / sync ---------- */
+/* ---------- tick / firebase ---------- */
 function tick() {
-  document.getElementById("clock").textContent = fmtClock(serverNow());
+  const now = serverNow();
+  document.getElementById("clock").textContent = fmtClock(now);
   updateEstimate();
+  checkAlarms(now);
   renderAll();
 }
-
 onValue(serverOffsetRef, snap => { serverTimeOffset = snap.val() || 0; });
 onValue(connectedRef, snap => {
   const el = document.getElementById("conn");
@@ -636,19 +587,30 @@ onValue(killsRef, snap => { kills = snap.val() || {}; renderAll(); });
 /* ---------- events ---------- */
 document.getElementById("clearAllBtn").addEventListener("click", clearAll);
 document.getElementById("bossSelect").addEventListener("change", e => setCurrentBoss(e.target.value));
-document.getElementById("recordBtn").addEventListener("click", () => {
-  recordKill(currentBoss, document.getElementById("chInput").value);
-});
-document.getElementById("chInput").addEventListener("keydown", e => {
-  if (e.key === "Enter") recordKill(currentBoss, document.getElementById("chInput").value);
-});
+document.getElementById("recordBtn").addEventListener("click", () => recordKill(currentBoss, document.getElementById("chInput").value));
+document.getElementById("chInput").addEventListener("keydown", e => { if (e.key === "Enter") recordKill(currentBoss, document.getElementById("chInput").value); });
 const nickEl = document.getElementById("nick");
 nickEl.addEventListener("change", () => localStorage.setItem("bt_nick", nickEl.value.trim()));
+
+const soundBtn = document.getElementById("soundBtn");
+function refreshSoundBtn() {
+  soundBtn.textContent = soundOn ? "🔊 音效：開" : "🔇 音效：關";
+  soundBtn.classList.toggle("off", !soundOn);
+}
+soundBtn.addEventListener("click", () => {
+  soundOn = !soundOn;
+  localStorage.setItem("bt_sound", soundOn ? "on" : "off");
+  refreshSoundBtn();
+  if (soundOn) { ensureAudio(); playAlarm(); }   // 開啟時試聽並解鎖音訊
+});
+// 第一次任何點擊/按鍵解鎖瀏覽器音訊
+window.addEventListener("pointerdown", ensureAudio, { once: true });
+window.addEventListener("keydown", ensureAudio, { once: true });
 
 /* ---------- init ---------- */
 const savedNick = localStorage.getItem("bt_nick");
 if (savedNick) nickEl.value = savedNick;
-
+refreshSoundBtn();
 buildBossList();
 buildGrid();
 setCurrentBoss(currentBoss);
