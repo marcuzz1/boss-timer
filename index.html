@@ -197,6 +197,14 @@
 
   /* ---------- patrol ---------- */
   .patrolwrap { flex: 1; min-height: 0; }
+  .patrolDetach { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .pipBtn { margin-left: auto; background: var(--panel2); color: var(--cream); border: 2px solid var(--edge); border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 700; box-shadow: 0 2px 0 var(--edge); cursor: pointer; }
+  .pipBtn:active { transform: translateY(2px); box-shadow: 0 0 0 var(--edge); }
+  .floatWin { position: fixed; top: 90px; left: 90px; width: 340px; height: 440px; z-index: 9999; background: var(--panel); border: 2px solid var(--gold); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; resize: both; box-shadow: 0 12px 34px rgba(0,0,0,.6); }
+  .floatWin .fwHead { cursor: move; user-select: none; background: var(--panel2); padding: 8px 10px; display: flex; align-items: center; gap: 8px; font-weight: 900; color: var(--gold); }
+  .floatWin .fwClose { margin-left: auto; background: transparent; border: none; color: var(--cream); font-size: 16px; font-weight: 900; cursor: pointer; }
+  .floatWin .fwBody { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 8px; overflow: hidden; }
+  .floatWin .patrolDetach { flex: 1; min-height: 0; }
   .patrol { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
   .prow {
     display: grid; grid-template-columns: auto auto 1fr auto; gap: 14px; align-items: center;
@@ -371,8 +379,10 @@
     <!-- Right column -->
     <div class="col">
       <section class="plate section patrolwrap">
-        <div class="head"><h2>巡查順序</h2><span class="tally" id="patrolCount">0 個</span></div>
-        <div class="patrol" id="patrol"><div class="empty">還沒有快出現的王。</div></div>
+        <div class="head"><h2>巡查順序</h2><span class="tally" id="patrolCount">0 個</span><button id="pipBtn" class="pipBtn" type="button">🔲 子母畫面</button></div>
+        <div id="patrolDetach" class="patrolDetach">
+          <div class="patrol" id="patrol"><div class="empty">還沒有快出現的王。</div></div>
+        </div>
       </section>
 
       <section class="plate section recwrap">
@@ -461,6 +471,9 @@ let recFilter = "all";
 const $ = id => document.getElementById(id);
 const serverNow = () => Date.now() + serverTimeOffset;
 const killId = (bossKey, ch) => `${bossKey}_${ch}`;
+const patrolBox = document.getElementById("patrol");            // 保留參照,搬進子母畫面後仍可更新
+const patrolDetachEl = document.getElementById("patrolDetach");
+const patrolHome = patrolDetachEl.parentNode;
 
 /* ---------- helpers ---------- */
 const isFloating = b => b.respawnMin !== b.respawnMax;
@@ -699,7 +712,7 @@ function renderPatrol(now) {
   const b0 = bossByKey[currentBoss];
   const items = sortedRows(now).filter(it => it.boss === currentBoss && (it.st === "overdue" || it.st === "window" || it.st === "soon"));
   $("patrolCount").textContent = `${b0.name}・${items.length} 個`;
-  const box = $("patrol");
+  const box = patrolBox;
   if (!items.length) { box.innerHTML = `<div class="empty">「${escapeHtml(b0.name)}」目前沒有快出現的頻道。<br>點上方其他王可切換巡查。</div>`; return; }
 
   const groups = new Map();
@@ -827,6 +840,69 @@ $("boardBtn").addEventListener("click", openBoard);
 $("boardClose").addEventListener("click", closeBoard);
 boardModal.addEventListener("click", e => { if (e.target === boardModal) closeBoard(); });
 window.addEventListener("keydown", e => { if (e.key === "Escape") closeBoard(); });
+
+/* ---------- 巡查子母畫面（Document PiP，退回頁內浮動視窗） ---------- */
+const pipBtn = $("pipBtn");
+let pipWin = null, floatWin = null;
+function copyStylesTo(win) {
+  [...document.styleSheets].forEach(ss => {
+    try {
+      const css = [...ss.cssRules].map(r => r.cssText).join("\n");
+      const s = win.document.createElement("style"); s.textContent = css; win.document.head.appendChild(s);
+    } catch (e) {
+      if (ss.href) { const l = win.document.createElement("link"); l.rel = "stylesheet"; l.href = ss.href; win.document.head.appendChild(l); }
+    }
+  });
+}
+async function togglePip() {
+  if (pipWin) { pipWin.close(); return; }
+  if (floatWin) { closeFloat(); return; }
+  if ("documentPictureInPicture" in window) {
+    try { pipWin = await window.documentPictureInPicture.requestWindow({ width: 360, height: 520 }); }
+    catch (e) { openFloat(); return; }
+    copyStylesTo(pipWin);
+    const layout = pipWin.document.createElement("style");
+    layout.textContent = "html,body{height:100%;margin:0;}body{background:#000;padding:10px;display:flex;flex-direction:column;font-family:'Noto Sans TC',sans-serif;color:#fdf3df;}.patrolDetach{flex:1;min-height:0;display:flex;flex-direction:column;}.patrol{flex:1;min-height:0;overflow-y:auto;}";
+    pipWin.document.head.appendChild(layout);
+    const title = pipWin.document.createElement("div");
+    title.style.cssText = "font-weight:900;color:#ffce54;margin-bottom:8px;";
+    title.textContent = "🎯 巡查順序";
+    pipWin.document.body.appendChild(title);
+    pipWin.document.body.appendChild(patrolDetachEl);
+    pipBtn.textContent = "關閉子母畫面";
+    pipWin.addEventListener("pagehide", () => { patrolHome.appendChild(patrolDetachEl); pipBtn.textContent = "🔲 子母畫面"; pipWin = null; });
+  } else {
+    openFloat();
+  }
+}
+function openFloat() {
+  floatWin = document.createElement("div");
+  floatWin.className = "floatWin";
+  floatWin.innerHTML = '<div class="fwHead" id="fwHead"><span>🎯 巡查順序</span><button class="fwClose" id="fwClose" type="button" aria-label="關閉">✕</button></div><div class="fwBody" id="fwBody"></div>';
+  document.body.appendChild(floatWin);
+  floatWin.querySelector("#fwBody").appendChild(patrolDetachEl);
+  floatWin.querySelector("#fwClose").addEventListener("click", closeFloat);
+  makeDraggable(floatWin, floatWin.querySelector("#fwHead"));
+  pipBtn.textContent = "關閉子母畫面";
+}
+function closeFloat() {
+  if (!floatWin) return;
+  patrolHome.appendChild(patrolDetachEl);
+  floatWin.remove(); floatWin = null;
+  pipBtn.textContent = "🔲 子母畫面";
+}
+function makeDraggable(win, handle) {
+  handle.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    const rect = win.getBoundingClientRect();
+    const offX = e.clientX - rect.left, offY = e.clientY - rect.top;
+    win.style.right = "auto"; win.style.bottom = "auto";
+    const move = ev => { win.style.left = Math.max(0, ev.clientX - offX) + "px"; win.style.top = Math.max(0, ev.clientY - offY) + "px"; };
+    const up = () => { document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", up); };
+    document.addEventListener("pointermove", move); document.addEventListener("pointerup", up);
+  });
+}
+pipBtn.addEventListener("click", togglePip);
 $("bossSelect").addEventListener("change", e => setCurrentBoss(e.target.value));
 $("recordBtn").addEventListener("click", () => recordKill(currentBoss, $("chInput").value));
 $("delChBtn").addEventListener("click", () => {
