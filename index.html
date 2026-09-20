@@ -340,7 +340,7 @@
     <!-- Message board column -->
     <div class="col">
       <section class="plate section boardwrap">
-        <div class="head"><h2>留言板</h2><span class="tally">大家都看得到</span></div>
+        <div class="head"><h2>留言板</h2><span class="tally" id="boardTally">連線中…</span></div>
         <div class="board-msgs" id="boardMsgs"><div class="empty">還沒有留言。打聲招呼、報個王吧！</div></div>
         <form class="board-form" id="boardForm">
           <input id="boardName" type="text" maxlength="16" placeholder="你的 ID" aria-label="你的 ID">
@@ -682,15 +682,27 @@ onValue(killsRef, s => { kills = s.val() || {}; const now = serverNow(); renderH
 /* ---------- message board ---------- */
 function renderBoard(list) {
   const box = $("boardMsgs");
-  if (!list.length) { box.innerHTML = '<div class="empty">還沒有留言。打聲招呼、報個王吧！</div>'; return; }
+  const tally = $("boardTally");
+  if (tally) tally.textContent = `${list.length} 則`;
+  if (!list.length) { box.innerHTML = '<div class="empty">還沒有留言。當第一個留言的人吧！</div>'; return; }
   box.innerHTML = list.map(m => `<div class="msg">
     <div class="who">${escapeHtml(m.name || "匿名")}<time>${fmtHM(m.time || serverNow())}</time></div>
     <div class="say">${escapeHtml(m.text || "")}</div>
   </div>`).join("");
   box.scrollTop = box.scrollHeight;
 }
-onValue(query(boardRef, limitToLast(100)), s => {
-  const list = []; s.forEach(c => list.push(c.val() || {})); renderBoard(list);
+// 讀整包留言,自己依時間排序後取最新 100 則（少用一層 query,較穩定）
+onValue(boardRef, s => {
+  const obj = s.val() || {};
+  const list = Object.entries(obj)
+    .map(([id, m]) => ({ id, name: m && m.name, text: m && m.text, time: (m && m.time) || 0 }))
+    .sort((a, b) => a.time - b.time)
+    .slice(-100);
+  renderBoard(list);
+}, err => {
+  console.error("board read failed:", err);
+  const tally = $("boardTally");
+  if (tally) tally.innerHTML = '<span style="color:var(--ember)">讀取失敗</span>';
 });
 $("boardForm").addEventListener("submit", async e => {
   e.preventDefault();
