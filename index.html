@@ -172,6 +172,8 @@
 
   /* ---------- channel grid ---------- */
   .gridwrap { flex: 1; min-height: 0; }
+  .channelDetach { flex: 1; min-height: 0; display: flex; flex-direction: column; container-type: inline-size; container-name: chgrid; }
+  .gridwrap .head .hbtn-danger { margin-left: 6px; }
   .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; font-size: 12px; color: var(--grape); }
   .legend span { display: inline-flex; align-items: center; gap: 5px; }
   .chip { width: 11px; height: 11px; border: 1px solid var(--edge); display: inline-block; }
@@ -200,8 +202,9 @@
   /* ---------- patrol ---------- */
   .patrolwrap { flex: 1; min-height: 0; }
   .patrolDetach { flex: 1; min-height: 0; display: flex; flex-direction: column; container-type: inline-size; container-name: patrol; }
-  .pipBtn { margin-left: auto; background: var(--panel2); color: var(--cream); border: 2px solid var(--edge); border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 700; box-shadow: 0 2px 0 var(--edge); cursor: pointer; }
+  .pipBtn { margin-left: auto; background: var(--panel2); color: var(--cream); border: 2px solid var(--edge); border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 700; box-shadow: 0 2px 0 var(--edge); cursor: pointer; white-space: nowrap; }
   .pipBtn:active { transform: translateY(2px); box-shadow: 0 0 0 var(--edge); }
+  .pipBtn.on { color: var(--gold); border-color: var(--gold); }
   .hbtn-danger { margin-left: auto; background: #3a1c28; color: var(--ember); border: 2px solid var(--edge); border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 700; box-shadow: 0 2px 0 var(--edge); cursor: pointer; }
   .hbtn-danger:active { transform: translateY(2px); box-shadow: 0 0 0 var(--edge); }
   .floatWin { position: fixed; top: 90px; left: 90px; width: 340px; height: 440px; min-width: 230px; min-height: 200px; max-width: 96vw; max-height: 92vh; z-index: 9999; background: var(--panel); border: 2px solid var(--gold); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; resize: both; box-shadow: 0 12px 34px rgba(0,0,0,.6); }
@@ -209,6 +212,8 @@
   .floatWin .fwClose { margin-left: auto; background: transparent; border: none; color: var(--cream); font-size: 16px; font-weight: 900; cursor: pointer; }
   .floatWin .fwBody { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 8px; overflow: hidden; }
   .floatWin .patrolDetach { flex: 1; min-height: 0; }
+  .floatWin .channelDetach { flex: 1; min-height: 0; }
+  .floatWin .grid { flex: 1; min-height: 0; overflow-y: auto; }
   .patrol { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
   .prow {
     display: grid; grid-template-columns: auto auto auto 1fr auto; gap: 14px; align-items: center;
@@ -393,6 +398,19 @@
     .col, .gridwrap, .patrolwrap, .recwrap, .boardwrap { overflow: visible; }
     .grid, .patrol, .tablewrap, .board-msgs { overflow: visible; }
   }
+
+  /* 頻道格自適應:依「自身寬度」決定欄數,子母畫面/浮動視窗縮放時才不會擠爆。
+     放在 media query 之後,抽離出去的視窗才吃得到這組規則 */
+  @container chgrid (max-width: 520px) {
+    .grid { grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); overflow-y: auto; }
+    .legend { gap: 8px; font-size: 11px; margin-bottom: 6px; }
+    .hint { font-size: 10px; }
+  }
+  @container chgrid (max-width: 300px) {
+    .grid { grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 4px; }
+    .cell { min-height: 40px; }
+    .legend { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -462,16 +480,18 @@
 
       <!-- Channel grid -->
       <section class="plate section gridwrap">
-        <div class="head"><h2>頻道 CH1–60</h2><button id="delBossBtn" class="hbtn-danger" type="button">🧹 清除此王全部</button></div>
-        <div class="legend">
-          <span><i class="chip overdue"></i>已重生</span>
-          <span><i class="chip window"></i>重生區間</span>
-          <span><i class="chip soon"></i>快出現了</span>
-          <span><i class="chip counting"></i>倒數中</span>
-          <span><i class="chip idle"></i>沒紀錄</span>
+        <div class="head"><h2>頻道 CH1–60</h2><button id="chPipBtn" class="pipBtn" type="button">🔲 子母畫面</button><button id="delBossBtn" class="hbtn-danger" type="button">🧹 清除此王全部</button></div>
+        <div id="channelDetach" class="channelDetach">
+          <div class="legend">
+            <span><i class="chip overdue"></i>已重生</span>
+            <span><i class="chip window"></i>重生區間</span>
+            <span><i class="chip soon"></i>快出現了</span>
+            <span><i class="chip counting"></i>倒數中</span>
+            <span><i class="chip idle"></i>沒紀錄</span>
+          </div>
+          <div class="grid" id="grid"></div>
+          <div class="hint">單擊選頻道帶入上面,雙擊直接記一筆(用目前追蹤的 BOSS 和你的暱稱)。</div>
         </div>
-        <div class="grid" id="grid"></div>
-        <div class="hint">單擊選頻道帶入上面,雙擊直接記一筆(用目前追蹤的 BOSS 和你的暱稱)。</div>
       </section>
     </div>
 
@@ -650,7 +670,6 @@ const serverNow = () => Date.now() + serverTimeOffset;
 const killId = (bossKey, ch) => `${bossKey}_${ch}`;
 const patrolBox = document.getElementById("patrol");            // 保留參照,搬進子母畫面後仍可更新
 const patrolDetachEl = document.getElementById("patrolDetach");
-const patrolHome = patrolDetachEl.parentNode;
 
 /* ---------- helpers ---------- */
 const isFloating = b => b.respawnMin !== b.respawnMax;
@@ -830,7 +849,12 @@ function updateEstimate() {
 function requireNick() {
   const el = $("nick");
   const v = el.value.trim();
-  if (!v) { el.classList.add("need"); el.placeholder = "請先輸入暱稱！"; el.focus(); return null; }
+  if (!v) {
+    el.classList.add("need"); el.placeholder = "請先輸入暱稱！"; el.focus();
+    // 從子母畫面/浮動視窗操作時看不到主視窗的紅框,補一個提示
+    if (pipWin || floatWins.size) alert("請先回主視窗填「你的暱稱」,才能記錄擊殺。");
+    return null;
+  }
   el.classList.remove("need");
   return v.slice(0, 16);
 }
@@ -1223,9 +1247,31 @@ chatFab.addEventListener("click", () => (chatOpen ? closeChat() : openChat()));
 $("boardClose").addEventListener("click", closeChat);
 window.addEventListener("keydown", e => { if (e.key === "Escape") closeChat(); });
 
-/* ---------- 巡查子母畫面（Document PiP，退回頁內浮動視窗） ---------- */
-const pipBtn = $("pipBtn");
-let pipWin = null, floatWin = null;
+/* ---------- 可抽離面板:原生子母畫面（Document PiP）,不支援或已佔用時退回頁內浮動視窗 ---------- */
+const PIP_LAYOUT_CSS = [
+  "html,body{height:100%;margin:0;}",
+  "body{background:#000;padding:10px;display:flex;flex-direction:column;font-family:'Noto Sans TC',sans-serif;color:#fdf3df;overflow-x:hidden;}",
+  ".pipTitle{flex:0 0 auto;font-weight:900;color:#ffce54;margin-bottom:8px;}",
+  ".patrolDetach{flex:1;min-height:0;display:flex;flex-direction:column;container-type:inline-size;container-name:patrol;}",
+  ".patrol{flex:1;min-height:0;overflow-y:auto;}",
+  ".channelDetach{flex:1;min-height:0;display:flex;flex-direction:column;container-type:inline-size;container-name:chgrid;}",
+  ".grid{flex:1;min-height:0;overflow-y:auto;}",
+].join("");
+
+// 每個可抽離面板:內容元素 + 觸發按鈕 + 原生子母畫面的預設尺寸
+const panels = new Map();
+[
+  { key: "patrol", el: patrolDetachEl, btn: $("pipBtn"), title: "🎯 巡查順序", size: { width: 360, height: 520 } },
+  { key: "channel", el: $("channelDetach"), btn: $("chPipBtn"), title: "📺 頻道 CH1–60", size: { width: 430, height: 560 } },
+].forEach(p => { if (p.el && p.btn) panels.set(p.key, { ...p, home: p.el.parentNode }); });
+
+let pipWin = null, pipKey = null;   // 原生子母畫面同時只能開一個
+const floatWins = new Map();        // key -> 頁內浮動視窗元素
+
+function setPipBtn(p, open) {
+  p.btn.textContent = open ? "✕ 關閉子母畫面" : "🔲 子母畫面";
+  p.btn.classList.toggle("on", open);
+}
 function copyStylesTo(win) {
   [...document.styleSheets].forEach(ss => {
     try {
@@ -1236,45 +1282,62 @@ function copyStylesTo(win) {
     }
   });
 }
-async function togglePip() {
-  if (pipWin) { pipWin.close(); return; }
-  if (floatWin) { closeFloat(); return; }
-  if ("documentPictureInPicture" in window) {
-    try { pipWin = await window.documentPictureInPicture.requestWindow({ width: 360, height: 520 }); }
-    catch (e) { openFloat(); return; }
+async function togglePip(key) {
+  const p = panels.get(key);
+  if (!p) return;
+  if (floatWins.has(key)) { closeFloat(key); return; }            // 已開浮動視窗 → 收回
+  if (pipKey === key && pipWin) { pipWin.close(); return; }        // 已開子母畫面 → 關掉
+  if ("documentPictureInPicture" in window && !pipWin) {
+    try { pipWin = await window.documentPictureInPicture.requestWindow(p.size); }
+    catch (e) { openFloat(key); return; }
+    pipKey = key;
     copyStylesTo(pipWin);
     const layout = pipWin.document.createElement("style");
-    layout.textContent = "html,body{height:100%;margin:0;}body{background:#000;padding:10px;display:flex;flex-direction:column;font-family:'Noto Sans TC',sans-serif;color:#fdf3df;overflow-x:hidden;}.patrolDetach{flex:1;min-height:0;display:flex;flex-direction:column;container-type:inline-size;container-name:patrol;}.patrol{flex:1;min-height:0;overflow-y:auto;}";
+    layout.textContent = PIP_LAYOUT_CSS;
     pipWin.document.head.appendChild(layout);
     const title = pipWin.document.createElement("div");
-    title.style.cssText = "font-weight:900;color:#ffce54;margin-bottom:8px;";
-    title.textContent = "🎯 巡查順序";
+    title.className = "pipTitle";
+    title.textContent = p.title;
     pipWin.document.body.appendChild(title);
-    pipWin.document.body.appendChild(patrolDetachEl);
-    pipBtn.textContent = "關閉子母畫面";
-    pipWin.addEventListener("pagehide", () => { patrolHome.appendChild(patrolDetachEl); pipBtn.textContent = "🔲 子母畫面"; pipWin = null; });
+    pipWin.document.body.appendChild(p.el);
+    setPipBtn(p, true);
+    pipWin.addEventListener("pagehide", () => {
+      p.home.appendChild(p.el);
+      setPipBtn(p, false);
+      pipWin = null; pipKey = null;
+    });
   } else {
-    openFloat();
+    openFloat(key);   // 瀏覽器不支援,或原生子母畫面已被另一個面板佔用
   }
 }
-function openFloat() {
-  floatWin = document.createElement("div");
-  floatWin.className = "floatWin";
-  floatWin.innerHTML = '<div class="fwHead" id="fwHead"><span>🎯 巡查順序</span><button class="fwClose" id="fwClose" type="button" aria-label="關閉">✕</button></div><div class="fwBody" id="fwBody"></div>';
-  document.body.appendChild(floatWin);
-  floatWin.querySelector("#fwBody").appendChild(patrolDetachEl);
-  floatWin.querySelector("#fwClose").addEventListener("click", closeFloat);
-  makeDraggable(floatWin, floatWin.querySelector("#fwHead"));
-  pipBtn.textContent = "關閉子母畫面";
+function openFloat(key) {
+  const p = panels.get(key);
+  if (!p || floatWins.has(key)) return;
+  const offset = 90 + floatWins.size * 30;
+  const win = document.createElement("div");
+  win.className = "floatWin";
+  win.style.left = offset + "px";
+  win.style.top = offset + "px";
+  win.innerHTML = '<div class="fwHead"><span class="fwTitle"></span><button class="fwClose" type="button" aria-label="關閉">✕</button></div><div class="fwBody"></div>';
+  win.querySelector(".fwTitle").textContent = p.title;
+  document.body.appendChild(win);
+  win.querySelector(".fwBody").appendChild(p.el);
+  win.querySelector(".fwClose").addEventListener("click", () => closeFloat(key));
+  makeDraggable(win, win.querySelector(".fwHead"));
+  floatWins.set(key, win);
+  setPipBtn(p, true);
 }
-function closeFloat() {
-  if (!floatWin) return;
-  patrolHome.appendChild(patrolDetachEl);
-  floatWin.remove(); floatWin = null;
-  pipBtn.textContent = "🔲 子母畫面";
+function closeFloat(key) {
+  const p = panels.get(key), win = floatWins.get(key);
+  if (!p || !win) return;
+  p.home.appendChild(p.el);
+  win.remove();
+  floatWins.delete(key);
+  setPipBtn(p, false);
 }
 function makeDraggable(win, handle) {
   handle.addEventListener("pointerdown", e => {
+    if (e.target.closest(".fwClose")) return;
     e.preventDefault();
     const rect = win.getBoundingClientRect();
     const offX = e.clientX - rect.left, offY = e.clientY - rect.top;
@@ -1284,7 +1347,7 @@ function makeDraggable(win, handle) {
     document.addEventListener("pointermove", move); document.addEventListener("pointerup", up);
   });
 }
-pipBtn.addEventListener("click", togglePip);
+panels.forEach((p, key) => p.btn.addEventListener("click", () => togglePip(key)));
 $("bossSelect").addEventListener("change", e => setCurrentBoss(e.target.value));
 $("recordBtn").addEventListener("click", () => recordKill(currentBoss, $("chInput").value));
 $("delChBtn").addEventListener("click", () => {
