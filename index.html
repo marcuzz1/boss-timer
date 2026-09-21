@@ -238,6 +238,21 @@
   .del { background: #3a1c28; color: var(--ember); padding: 4px 8px; font-size: 11px; box-shadow: none; border-radius: 5px; }
   .del:active { transform: none; }
 
+  /* 紀錄面板頁籤（目前紀錄 / 歷史紀錄） */
+  .rtabs { display: flex; gap: 4px; }
+  .rtab { background: var(--night2); color: var(--grape); border: 2px solid var(--edge); border-radius: 6px; padding: 4px 9px; font-size: 11px; font-weight: 700; cursor: pointer; }
+  .rtab:hover { color: var(--cream); }
+  .rtab.on { background: var(--panel2); color: var(--gold); border-color: var(--gold); }
+  .rtab:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+  .hact { padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 11px; border: 1px solid var(--edge); white-space: nowrap; }
+  .hact.add { background: rgba(94,203,122,.2); color: var(--leaf); }
+  .hact.edit { background: rgba(255,206,84,.2); color: var(--gold); }
+  .hact.del { background: rgba(255,111,97,.2); color: var(--ember); }
+  .hact.restore { background: rgba(176,107,255,.2); color: var(--violet); }
+  .undo { background: #1d3324; color: var(--leaf); border: 1px solid var(--edge); border-radius: 5px; padding: 4px 8px; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .undo:hover { background: #24422e; }
+  td.hprev { color: var(--grape); }
+
   /* patrol grouped by boss */
   .pgroup { display: flex; flex-direction: column; gap: 6px; background: var(--panel2); border: 2px solid var(--edge); border-radius: 9px; padding: 8px; }
   .pgroup + .pgroup { margin-top: 8px; }
@@ -465,12 +480,28 @@
       </section>
 
       <section class="plate section recwrap">
-        <div class="head"><h2>紀錄</h2><select id="recFilter" class="recFilter"></select><span class="tally" id="recordCount">0 筆</span></div>
-        <div class="tablewrap">
+        <div class="head">
+          <h2>紀錄</h2>
+          <div class="rtabs">
+            <button class="rtab on" data-rtab="now" type="button">目前紀錄</button>
+            <button class="rtab" data-rtab="hist" type="button">歷史紀錄</button>
+          </div>
+          <select id="recFilter" class="recFilter"></select>
+          <span class="tally" id="recordCount">0 筆</span>
+        </div>
+        <div class="tablewrap" id="recNowWrap">
           <table>
             <thead><tr><th>BOSS</th><th>CH</th><th>擊殺者</th><th>擊殺</th><th>狀態</th><th>剩餘</th><th></th></tr></thead>
             <tbody id="recordBody">
               <tr><td colspan="7" class="empty">還沒有紀錄。打倒王之後記一筆,大家就會一起看到。</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tablewrap" id="recHistWrap" style="display:none;">
+          <table>
+            <thead><tr><th>操作</th><th>動作</th><th>BOSS</th><th>CH</th><th>擊殺者</th><th>擊殺時間</th><th>操作者</th><th></th></tr></thead>
+            <tbody id="historyBody">
+              <tr><td colspan="8" class="empty">還沒有歷史紀錄。之後新增、校正、刪除都會留在這裡（最新 50 筆）。</td></tr>
             </tbody>
           </table>
         </div>
@@ -589,9 +620,12 @@ const bossByKey = Object.fromEntries(BOSSES.map(b => [b.key, b]));
 const CHANNELS = 60;
 const SOON_MS = 5 * 60 * 1000;
 const KILLS_PATH = "bossTimer/kills";
+const HISTORY_PATH = "bossTimer/history";
+const HISTORY_MAX = 50;                 // 只保留最新 50 筆,超出的直接刪掉
 const MIN = 60 * 1000;
 
 const killsRef = ref(db, KILLS_PATH);
+const historyRef = ref(db, HISTORY_PATH);
 const boardRef = ref(db, "bossTimer/board");
 const serverOffsetRef = ref(db, ".info/serverTimeOffset");
 const connectedRef = ref(db, ".info/connected");
@@ -602,6 +636,8 @@ let kills = {};
 let selectedCh = null;
 let connected = false;
 let recFilter = "all";
+let histLog = {};          // 歷史紀錄（pushId -> entry）
+let recTab = "now";        // 紀錄面板頁籤:now=目前紀錄 / hist=歷史紀錄
 let lastHeroSig = "", lastPatrolSig = "";
 
 const $ = id => document.getElementById(id);
@@ -758,7 +794,7 @@ function buildRecFilter() {
   const sel = $("recFilter");
   sel.innerHTML = '<option value="all">全部紀錄</option>' + BOSSES.map(b => `<option value="${b.key}">${b.name}</option>`).join("");
   sel.value = recFilter;
-  sel.addEventListener("change", () => { recFilter = sel.value; renderRecords(serverNow()); });
+  sel.addEventListener("change", () => { recFilter = sel.value; renderRecords(serverNow()); renderHistory(); });
 }
 function setCurrentBoss(key) {
   currentBoss = key;
@@ -800,17 +836,28 @@ async function recordKill(bossKey, ch) {
   if (!nick) return;
   const b = bossByKey[bossKey];
   const killer = ($("killerInput").value.trim() || nick).slice(0, 16);
-  try { await set(ref(db, `${KILLS_PATH}/${killId(bossKey, ch)}`), { boss: bossKey, bossName: b.name, ch, killer, killTime: serverNow() }); selectedCh = null; }
-  catch (err) { console.error(err); alert("記錄沒有存上去。檢查一下 Firebase 規則有沒有開放寫入。"); }
+  const prev = kills[killId(bossKey, ch)];
+  const killTime = serverNow();
+  try { await set(ref(db, `${KILLS_PATH}/${killId(bossKey, ch)}`), { boss: bossKey, bossName: b.name, ch, killer, killTime }); selectedCh = null; }
+  catch (err) { console.error(err); alert("記錄沒有存上去。檢查一下 Firebase 規則有沒有開放寫入。"); return; }
+  logHistory({ action: prev ? "edit" : "add", boss: bossKey, bossName: b.name, ch, killer, killTime, prev });
 }
 async function deleteKill(id) {
+  const prev = kills[id];
   try { await remove(ref(db, `${KILLS_PATH}/${id}`)); }
-  catch (err) { console.error(err); alert("刪不掉。檢查一下 Firebase 規則。"); }
+  catch (err) { console.error(err); alert("刪不掉。檢查一下 Firebase 規則。"); return; }
+  if (prev && bossByKey[prev.boss]) {
+    logHistory({ action: "del", boss: prev.boss, bossName: bossByKey[prev.boss].name, ch: prev.ch, killer: prev.killer, killTime: prev.killTime });
+  }
 }
 async function clearAll() {
   if (!confirm("要清掉全部紀錄嗎？")) return;
+  const snapshot = Object.values(kills).filter(it => it && bossByKey[it.boss]);
   try { await remove(killsRef); }
-  catch (err) { console.error(err); alert("清不掉。檢查一下 Firebase 規則。"); }
+  catch (err) { console.error(err); alert("清不掉。檢查一下 Firebase 規則。"); return; }
+  for (const it of snapshot) {
+    await logHistory({ action: "del", boss: it.boss, bossName: bossByKey[it.boss].name, ch: it.ch, killer: it.killer, killTime: it.killTime });
+  }
 }
 // 清除某隻王所有頻道的紀錄
 async function clearBoss(bossKey) {
@@ -818,8 +865,12 @@ async function clearBoss(bossKey) {
   const ids = Object.keys(kills).filter(id => kills[id] && kills[id].boss === bossKey);
   if (!ids.length) { alert(`${b.name} 目前沒有任何紀錄`); return; }
   if (!confirm(`確定清除「${b.name}」全部 ${ids.length} 個頻道的紀錄嗎？`)) return;
+  const snapshot = ids.map(id => kills[id]).filter(Boolean);
   try { await Promise.all(ids.map(id => remove(ref(db, `${KILLS_PATH}/${id}`)))); }
-  catch (err) { console.error(err); alert("清除失敗,請確認 Firebase 規則。"); }
+  catch (err) { console.error(err); alert("清除失敗,請確認 Firebase 規則。"); return; }
+  for (const it of snapshot) {
+    await logHistory({ action: "del", boss: it.boss, bossName: b.name, ch: it.ch, killer: it.killer, killTime: it.killTime });
+  }
 }
 // 自訂時間蓋掉原紀錄：mode=min 幾分鐘前擊殺 / mode=time 擊殺時間(時:分)
 async function applyOverride(bossKey, chRaw, nick) {
@@ -845,7 +896,64 @@ async function applyOverride(bossKey, chRaw, nick) {
   const killer = ((existing && existing.killer) || nick || "匿名").slice(0, 16);
   try {
     await set(ref(db, `${KILLS_PATH}/${killId(bossKey, ch)}`), { boss: bossKey, bossName: b.name, ch, killer, killTime });
-  } catch (err) { console.error(err); alert("套用失敗,請確認 Firebase 規則。"); }
+  } catch (err) { console.error(err); alert("套用失敗,請確認 Firebase 規則。"); return; }
+  logHistory({ action: existing ? "edit" : "add", boss: bossKey, bossName: b.name, ch, killer, killTime, prev: existing });
+}
+
+/* ---------- 歷史紀錄:每次變動留一筆,只保留最新 HISTORY_MAX 筆 ---------- */
+const HIST_LABEL = { add: "新增", edit: "校正", del: "刪除", restore: "復原" };
+const currentNick = () => {
+  const el = $("nick");
+  const v = ((el && el.value.trim()) || localStorage.getItem("bt_nick") || "").trim();
+  return v ? v.slice(0, 16) : "匿名";
+};
+async function logHistory({ action, boss, bossName, ch, killer, killTime, prev }) {
+  const entry = {
+    action, boss, bossName: bossName || (bossByKey[boss] && bossByKey[boss].name) || boss,
+    ch: Number(ch), killer: (killer || "匿名").slice(0, 16), killTime: killTime || 0,
+    by: currentNick(), at: serverNow(),
+  };
+  if (prev && prev.killTime) { entry.prevKiller = (prev.killer || "匿名").slice(0, 16); entry.prevKillTime = prev.killTime; }
+  try {
+    const r = await push(historyRef, entry);
+    await trimHistory(r && r.key);
+  } catch (err) { console.error("寫入歷史紀錄失敗:", err); }
+}
+// 超過上限的舊資料直接刪掉（push key 本身就是時間序,排序後砍前面的）
+async function trimHistory(newKey) {
+  const keys = [...new Set([...Object.keys(histLog), ...(newKey ? [newKey] : [])])].sort();
+  if (keys.length <= HISTORY_MAX) return;
+  const extra = keys.slice(0, keys.length - HISTORY_MAX);
+  try { await Promise.all(extra.map(k => remove(ref(db, `${HISTORY_PATH}/${k}`)))); }
+  catch (err) { console.error("清理舊歷史紀錄失敗:", err); }
+}
+// 最新的在最上面
+function historyRows() {
+  return Object.entries(histLog)
+    .filter(([, h]) => h && h.boss && bossByKey[h.boss])
+    .map(([id, h]) => ({ id, ...h }))
+    .sort((a, b) => (b.at || 0) - (a.at || 0))
+    .slice(0, HISTORY_MAX);
+}
+// 校正過的紀錄還原成「原本的時間」,其他動作還原成該筆本身
+const restoreTarget = h => (h.action === "edit" && h.prevKillTime)
+  ? { killer: h.prevKiller || h.killer, killTime: h.prevKillTime }
+  : { killer: h.killer, killTime: h.killTime };
+async function restoreFromHistory(hid) {
+  const h = histLog[hid];
+  if (!h || !bossByKey[h.boss]) { alert("這筆歷史紀錄的資料不完整,沒辦法復原。"); return; }
+  const tgt = restoreTarget(h);
+  if (!tgt.killTime) { alert("這筆歷史紀錄沒有擊殺時間,沒辦法復原。"); return; }
+  const b = bossByKey[h.boss];
+  const exist = kills[killId(h.boss, h.ch)];
+  const msg = exist
+    ? `${b.name} CH${h.ch} 目前已有紀錄（${fmtHM(exist.killTime)} 擊殺）。\n要用歷史紀錄的 ${fmtHM(tgt.killTime)} 蓋掉嗎？`
+    : `要把 ${b.name} CH${h.ch}（${fmtHM(tgt.killTime)} 擊殺）復原嗎？`;
+  if (!confirm(msg)) return;
+  try {
+    await set(ref(db, `${KILLS_PATH}/${killId(h.boss, h.ch)}`), { boss: h.boss, bossName: b.name, ch: Number(h.ch), killer: tgt.killer || "匿名", killTime: tgt.killTime });
+  } catch (err) { console.error(err); alert("復原失敗,請確認 Firebase 規則。"); return; }
+  logHistory({ action: "restore", boss: h.boss, bossName: b.name, ch: h.ch, killer: tgt.killer, killTime: tgt.killTime, prev: exist });
 }
 
 /* ---------- render ---------- */
@@ -951,7 +1059,7 @@ function renderPatrol(now) {
 function renderRecords(now) {
   let rows = sortedRows(now);
   if (recFilter !== "all") rows = rows.filter(r => r.boss === recFilter);
-  $("recordCount").textContent = `${rows.length} 筆`;
+  if (recTab === "now") $("recordCount").textContent = `${rows.length} 筆`;
   const body = $("recordBody");
   if (!rows.length) { body.innerHTML = '<tr><td colspan="7" class="empty">這個篩選目前沒有紀錄。</td></tr>'; return; }
   body.innerHTML = rows.map(r => {
@@ -968,6 +1076,44 @@ function renderRecords(now) {
   }).join("");
   body.querySelectorAll("[data-del]").forEach(btn => btn.addEventListener("click", () => deleteKill(btn.getAttribute("data-del"))));
 }
+function renderHistory() {
+  let rows = historyRows();
+  if (recFilter !== "all") rows = rows.filter(h => h.boss === recFilter);
+  if (recTab === "hist") $("recordCount").textContent = `${rows.length} / ${HISTORY_MAX} 筆`;
+  const body = $("historyBody");
+  if (!body) return;
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="8" class="empty">這個篩選沒有歷史紀錄。之後新增、校正、刪除都會留在這裡（最新 50 筆）。</td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map(h => {
+    const act = HIST_LABEL[h.action] || h.action;
+    const timeCell = (h.action === "edit" && h.prevKillTime)
+      ? `<span class="hprev">${fmtHM(h.prevKillTime)}</span> → ${fmtHM(h.killTime)}`
+      : fmtHM(h.killTime);
+    return `<tr>
+      <td class="pix">${fmtHM(h.at || 0)}</td>
+      <td><span class="hact ${h.action}">${act}</span></td>
+      <td>${escapeHtml(h.bossName || "")}</td>
+      <td class="pix">${h.ch}</td>
+      <td>${escapeHtml(h.killer || "匿名")}</td>
+      <td class="pix">${timeCell}</td>
+      <td>${escapeHtml(h.by || "匿名")}</td>
+      <td><button class="undo" data-undo="${h.id}" title="把這筆紀錄寫回去">↩ 復原</button></td>
+    </tr>`;
+  }).join("");
+  body.querySelectorAll("[data-undo]").forEach(btn =>
+    btn.addEventListener("click", () => restoreFromHistory(btn.getAttribute("data-undo"))));
+}
+function setRecTab(tab) {
+  recTab = tab === "hist" ? "hist" : "now";
+  document.querySelectorAll(".rtab").forEach(b => b.classList.toggle("on", b.dataset.rtab === recTab));
+  $("recNowWrap").style.display = recTab === "now" ? "" : "none";
+  $("recHistWrap").style.display = recTab === "hist" ? "" : "none";
+  renderRecords(serverNow());
+  renderHistory();
+}
+document.querySelectorAll(".rtab").forEach(btn => btn.addEventListener("click", () => setRecTab(btn.dataset.rtab)));
 
 function tick() {
   const now = serverNow();
@@ -995,6 +1141,11 @@ function startDataListeners() {
   if (_dataListenersStarted) return;
   _dataListenersStarted = true;
   onValue(killsRef, s => { kills = s.val() || {}; const now = serverNow(); renderHero(now); renderGrid(); renderPatrol(now); renderRecords(now); });
+  onValue(historyRef, s => { histLog = s.val() || {}; renderHistory(); }, err => {
+    console.error("history read failed:", err);
+    const body = $("historyBody");
+    if (body) body.innerHTML = '<tr><td colspan="8" class="empty" style="color:var(--ember)">歷史紀錄讀取失敗,請確認 Firebase 規則已開放 bossTimer/history。</td></tr>';
+  });
   onValue(boardRef, s => {
     const obj = s.val() || {};
     const list = Object.entries(obj)

@@ -140,6 +140,25 @@
   .tag.window{background:rgba(176,107,255,.2);color:var(--violet);} .tag.overdue{background:rgba(255,111,97,.2);color:var(--ember);}
   .rec .del{flex:0 0 auto;background:#3a1c28;color:var(--ember);border:2px solid var(--edge);border-radius:8px;padding:8px 10px;font-size:12px;font-weight:700;white-space:nowrap;}
 
+  /* 紀錄頁籤（目前紀錄 / 歷史紀錄） */
+  .rtabs{display:flex;gap:6px;margin:0 2px 10px;}
+  .rtab{flex:1;background:var(--night2);color:var(--grape);border:2px solid var(--edge);border-radius:9px;padding:9px 6px;font-size:13px;font-weight:700;}
+  .rtab.on{background:var(--panel2);color:var(--gold);border-color:var(--gold);}
+  /* 歷史紀錄卡片 */
+  .hrow{background:var(--night2);border:2px solid var(--edge);border-radius:10px;padding:10px;margin-bottom:8px;}
+  .hrow .top{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+  .hact{font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px;border:1px solid var(--edge);white-space:nowrap;}
+  .hact.add{background:rgba(94,203,122,.2);color:var(--leaf);}
+  .hact.edit{background:rgba(255,206,84,.2);color:var(--gold);}
+  .hact.del{background:rgba(255,111,97,.2);color:var(--ember);}
+  .hact.restore{background:rgba(176,107,255,.2);color:var(--violet);}
+  .hrow .nm{font-weight:700;font-size:14px;min-width:0;overflow-wrap:anywhere;}
+  .hrow .when{margin-left:auto;font-size:11px;color:var(--grape);font-weight:700;white-space:nowrap;}
+  .hrow .sub{font-size:12px;color:var(--grape);margin-top:5px;overflow-wrap:anywhere;}
+  .hrow .prevt{text-decoration:line-through;opacity:.75;}
+  .hrow .undo{width:100%;margin-top:9px;background:#1d3324;color:var(--leaf);border:2px solid var(--edge);border-radius:9px;padding:11px;font-size:14px;font-weight:800;}
+  .hrow .undo:active{transform:translateY(2px);}
+
   /* board */
   .msgs{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;padding-bottom:76px;}
   .msg{background:var(--night2);border:2px solid var(--edge);border-radius:10px;padding:9px 11px;}
@@ -234,7 +253,12 @@
       <select id="recFilter" class="recFilter"></select>
       <button id="clearAllBtn" style="margin-left:auto;background:#3a1c28;color:var(--ember);border:2px solid var(--edge);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;">全部清除</button>
     </div>
+    <div class="rtabs">
+      <button class="rtab on" data-rtab="now" type="button">目前紀錄</button>
+      <button class="rtab" data-rtab="hist" type="button">歷史紀錄</button>
+    </div>
     <div id="recordList"><div class="empty">還沒有紀錄。到「頻道」記一筆吧。</div></div>
+    <div id="historyList" style="display:none;"><div class="empty">還沒有歷史紀錄。<br>之後新增、校正、刪除都會留在這裡（最新 50 筆）。</div></div>
   </section>
 
   <!-- 留言 -->
@@ -342,13 +366,16 @@ const BOSSES = [
 ];
 const bossByKey = Object.fromEntries(BOSSES.map(b => [b.key, b]));
 const CHANNELS = 60, SOON_MS = 5*60*1000, KILLS_PATH = "bossTimer/kills", MIN = 60*1000;
+const HISTORY_PATH = "bossTimer/history", HISTORY_MAX = 50;   // 只保留最新 50 筆
 
 const killsRef = ref(db, KILLS_PATH);
+const historyRef = ref(db, HISTORY_PATH);
 const boardRef = ref(db, "bossTimer/board");
 const serverOffsetRef = ref(db, ".info/serverTimeOffset");
 const connectedRef = ref(db, ".info/connected");
 
 let serverTimeOffset = 0, currentBoss = BOSSES[0].key, kills = {}, selectedCh = null, patrolBoss = BOSSES[0].key, connected = false, recFilter = "all";
+let histLog = {}, recTab = "now";
 let lastHeroSig = "", lastPatrolSig = "";
 const $ = id => document.getElementById(id);
 const serverNow = () => Date.now() + serverTimeOffset;
@@ -453,8 +480,10 @@ async function recordKill(bossKey,ch){
   if(!ch||ch<1||ch>CHANNELS){ alert("請輸入 1~60 的頻道"); return; }
   const killer=requireNick(); if(!killer) return;
   const b=bossByKey[bossKey];
-  try{ await set(ref(db,`${KILLS_PATH}/${killId(bossKey,ch)}`),{boss:bossKey,bossName:b.name,ch,killer,killTime:serverNow()}); selectedCh=null; }
-  catch(err){ console.error(err); alert("記錄沒存上去。檢查 Firebase 規則。"); }
+  const prev=kills[killId(bossKey,ch)], killTime=serverNow();
+  try{ await set(ref(db,`${KILLS_PATH}/${killId(bossKey,ch)}`),{boss:bossKey,bossName:b.name,ch,killer,killTime}); selectedCh=null; }
+  catch(err){ console.error(err); alert("記錄沒存上去。檢查 Firebase 規則。"); return; }
+  logHistory({action:prev?"edit":"add",boss:bossKey,bossName:b.name,ch,killer,killTime,prev});
 }
 function requireNick(){
   const el=$("killerInput");
@@ -463,15 +492,26 @@ function requireNick(){
   el.classList.remove("need");
   const nick=v.slice(0,16); localStorage.setItem("bt_nick",nick); return nick;
 }
-async function deleteKill(id){ try{ await remove(ref(db,`${KILLS_PATH}/${id}`)); }catch(err){ console.error(err); alert("刪不掉。"); } }
-async function clearAll(){ if(!confirm("要清掉全部紀錄嗎？")) return; try{ await remove(killsRef); }catch(err){ console.error(err); alert("清不掉。"); } }
+async function deleteKill(id){
+  const prev=kills[id];
+  try{ await remove(ref(db,`${KILLS_PATH}/${id}`)); }catch(err){ console.error(err); alert("刪不掉。"); return; }
+  if(prev&&bossByKey[prev.boss]) logHistory({action:"del",boss:prev.boss,bossName:bossByKey[prev.boss].name,ch:prev.ch,killer:prev.killer,killTime:prev.killTime});
+}
+async function clearAll(){
+  if(!confirm("要清掉全部紀錄嗎？")) return;
+  const snap=Object.values(kills).filter(it=>it&&bossByKey[it.boss]);
+  try{ await remove(killsRef); }catch(err){ console.error(err); alert("清不掉。"); return; }
+  for(const it of snap) await logHistory({action:"del",boss:it.boss,bossName:bossByKey[it.boss].name,ch:it.ch,killer:it.killer,killTime:it.killTime});
+}
 async function clearBoss(bossKey){
   const b=bossByKey[bossKey];
   const ids=Object.keys(kills).filter(id=>kills[id]&&kills[id].boss===bossKey);
   if(!ids.length){ alert(`${b.name} 目前沒有任何紀錄`); return; }
   if(!confirm(`確定清除「${b.name}」全部 ${ids.length} 個頻道的紀錄嗎？`)) return;
+  const snap=ids.map(id=>kills[id]).filter(Boolean);
   try{ await Promise.all(ids.map(id=>remove(ref(db,`${KILLS_PATH}/${id}`)))); }
-  catch(err){ console.error(err); alert("清除失敗,請確認 Firebase 規則。"); }
+  catch(err){ console.error(err); alert("清除失敗,請確認 Firebase 規則。"); return; }
+  for(const it of snap) await logHistory({action:"del",boss:it.boss,bossName:b.name,ch:it.ch,killer:it.killer,killTime:it.killTime});
 }
 async function applyOverride(bossKey,chRaw){
   const ch=Number(chRaw);
@@ -492,7 +532,55 @@ async function applyOverride(bossKey,chRaw){
   const existing=kills[killId(bossKey,ch)];
   const killer=((existing&&existing.killer)||localStorage.getItem("bt_nick")||"匿名").slice(0,16);
   try{ await set(ref(db,`${KILLS_PATH}/${killId(bossKey,ch)}`),{boss:bossKey,bossName:b.name,ch,killer,killTime}); }
-  catch(err){ console.error(err); alert("套用失敗,請確認 Firebase 規則。"); }
+  catch(err){ console.error(err); alert("套用失敗,請確認 Firebase 規則。"); return; }
+  logHistory({action:existing?"edit":"add",boss:bossKey,bossName:b.name,ch,killer,killTime,prev:existing});
+}
+
+/* 歷史紀錄:每次變動留一筆,只保留最新 HISTORY_MAX 筆,最新的在最上面 */
+const HIST_LABEL={add:"新增",edit:"校正",del:"刪除",restore:"復原"};
+const currentNick=()=>{
+  const el=$("killerInput");
+  const v=((el&&el.value.trim())||localStorage.getItem("bt_nick")||"").trim();
+  return v?v.slice(0,16):"匿名";
+};
+async function logHistory({action,boss,bossName,ch,killer,killTime,prev}){
+  const entry={
+    action, boss, bossName: bossName||(bossByKey[boss]&&bossByKey[boss].name)||boss,
+    ch:Number(ch), killer:(killer||"匿名").slice(0,16), killTime:killTime||0,
+    by:currentNick(), at:serverNow(),
+  };
+  if(prev&&prev.killTime){ entry.prevKiller=(prev.killer||"匿名").slice(0,16); entry.prevKillTime=prev.killTime; }
+  try{ const r=await push(historyRef,entry); await trimHistory(r&&r.key); }
+  catch(err){ console.error("寫入歷史紀錄失敗:",err); }
+}
+async function trimHistory(newKey){
+  const keys=[...new Set([...Object.keys(histLog),...(newKey?[newKey]:[])])].sort();
+  if(keys.length<=HISTORY_MAX) return;
+  const extra=keys.slice(0,keys.length-HISTORY_MAX);
+  try{ await Promise.all(extra.map(k=>remove(ref(db,`${HISTORY_PATH}/${k}`)))); }
+  catch(err){ console.error("清理舊歷史紀錄失敗:",err); }
+}
+const historyRows=()=>Object.entries(histLog)
+  .filter(([,h])=>h&&h.boss&&bossByKey[h.boss])
+  .map(([id,h])=>({id,...h}))
+  .sort((a,b)=>(b.at||0)-(a.at||0))
+  .slice(0,HISTORY_MAX);
+const restoreTarget=h=>(h.action==="edit"&&h.prevKillTime)
+  ? {killer:h.prevKiller||h.killer,killTime:h.prevKillTime}
+  : {killer:h.killer,killTime:h.killTime};
+async function restoreFromHistory(hid){
+  const h=histLog[hid];
+  if(!h||!bossByKey[h.boss]){ alert("這筆歷史紀錄的資料不完整,沒辦法復原。"); return; }
+  const tgt=restoreTarget(h);
+  if(!tgt.killTime){ alert("這筆歷史紀錄沒有擊殺時間,沒辦法復原。"); return; }
+  const b=bossByKey[h.boss], exist=kills[killId(h.boss,h.ch)];
+  const msg=exist
+    ? `${b.name} CH${h.ch} 目前已有紀錄（${fmtHM(exist.killTime)} 擊殺）。\n要用歷史紀錄的 ${fmtHM(tgt.killTime)} 蓋掉嗎？`
+    : `要把 ${b.name} CH${h.ch}（${fmtHM(tgt.killTime)} 擊殺）復原嗎？`;
+  if(!confirm(msg)) return;
+  try{ await set(ref(db,`${KILLS_PATH}/${killId(h.boss,h.ch)}`),{boss:h.boss,bossName:b.name,ch:Number(h.ch),killer:tgt.killer||"匿名",killTime:tgt.killTime}); }
+  catch(err){ console.error(err); alert("復原失敗,請確認 Firebase 規則。"); return; }
+  logHistory({action:"restore",boss:h.boss,bossName:b.name,ch:h.ch,killer:tgt.killer,killTime:tgt.killTime,prev:exist});
 }
 
 /* render */
@@ -560,12 +648,12 @@ function buildRecFilter(){
   const sel=$("recFilter");
   sel.innerHTML='<option value="all">全部紀錄</option>'+BOSSES.map(b=>`<option value="${b.key}">${b.name}</option>`).join("");
   sel.value=recFilter;
-  sel.addEventListener("change",()=>{ recFilter=sel.value; renderRecords(serverNow()); });
+  sel.addEventListener("change",()=>{ recFilter=sel.value; renderRecords(serverNow()); renderHistory(); });
 }
 function renderRecords(now){
   let rows=sortedRows(now);
   if(recFilter!=="all") rows=rows.filter(r=>r.boss===recFilter);
-  $("recordCount").textContent=`${rows.length} 筆`;
+  if(recTab==="now") $("recordCount").textContent=`${rows.length} 筆`;
   const box=$("recordList");
   if(!rows.length){ box.innerHTML='<div class="empty">這個篩選目前沒有紀錄。</div>'; return; }
   box.innerHTML=rows.map(r=>{
@@ -578,6 +666,34 @@ function renderRecords(now){
     </div>`;
   }).join("");
   box.querySelectorAll(".del").forEach(btn=>btn.addEventListener("click",()=>deleteKill(btn.dataset.del)));
+}
+function renderHistory(){
+  let rows=historyRows();
+  if(recFilter!=="all") rows=rows.filter(h=>h.boss===recFilter);
+  if(recTab==="hist") $("recordCount").textContent=`${rows.length} / ${HISTORY_MAX} 筆`;
+  const box=$("historyList"); if(!box) return;
+  if(!rows.length){ box.innerHTML='<div class="empty">這個篩選沒有歷史紀錄。<br>之後新增、校正、刪除都會留在這裡（最新 50 筆）。</div>'; return; }
+  box.innerHTML=rows.map(h=>{
+    const act=HIST_LABEL[h.action]||h.action;
+    const timeText=(h.action==="edit"&&h.prevKillTime)
+      ? `<span class="prevt">${fmtHM(h.prevKillTime)}</span> → ${fmtHM(h.killTime)}`
+      : fmtHM(h.killTime);
+    return `<div class="hrow">
+      <div class="top"><span class="hact ${h.action}">${act}</span><span class="nm">${escapeHtml(h.bossName||"")} · CH${h.ch}</span><span class="when">${fmtHM(h.at||0)}</span></div>
+      <div class="sub">${escapeHtml(h.killer||"匿名")} ｜ 擊殺時間 ${timeText}</div>
+      <div class="sub">操作者 ${escapeHtml(h.by||"匿名")}</div>
+      <button class="undo" data-undo="${h.id}">↩ 復原這筆</button>
+    </div>`;
+  }).join("");
+  box.querySelectorAll("[data-undo]").forEach(btn=>btn.addEventListener("click",()=>restoreFromHistory(btn.dataset.undo)));
+}
+function setRecTab(tab){
+  recTab=tab==="hist"?"hist":"now";
+  document.querySelectorAll(".rtab").forEach(b=>b.classList.toggle("on",b.dataset.rtab===recTab));
+  $("recordList").style.display=recTab==="now"?"":"none";
+  $("historyList").style.display=recTab==="hist"?"":"none";
+  const clr=$("clearAllBtn"); if(clr) clr.style.display=recTab==="now"?"":"none";
+  renderRecords(serverNow()); renderHistory();
 }
 function renderBoard(list){
   const box=$("boardMsgs");
@@ -602,6 +718,8 @@ function startDataListeners(){
   if(_dataListenersStarted) return;
   _dataListenersStarted=true;
   onValue(killsRef,s=>{ kills=s.val()||{}; const now=serverNow(); renderHero(now); renderGrid(); renderPatrol(now); renderRecords(now); });
+  onValue(historyRef,s=>{ histLog=s.val()||{}; renderHistory(); },
+    err=>{ console.error("history read failed:",err); const b=$("historyList"); if(b) b.innerHTML='<div class="empty" style="color:var(--ember)">歷史紀錄讀取失敗,請確認 Firebase 規則已開放 bossTimer/history。</div>'; });
   onValue(boardRef,s=>{
     const obj=s.val()||{};
     const list=Object.entries(obj)
@@ -633,6 +751,7 @@ $("ovMode").addEventListener("change",syncOvMode); syncOvMode();
 $("ovBtn").addEventListener("click",()=>{ if(!requireNick()) return; applyOverride(currentBoss,$("chInput").value); });
 $("chInput").addEventListener("keydown",e=>{ if(e.key==="Enter") recordKill(currentBoss,$("chInput").value); });
 $("clearAllBtn").addEventListener("click",clearAll);
+document.querySelectorAll(".rtab").forEach(btn=>btn.addEventListener("click",()=>setRecTab(btn.dataset.rtab)));
 $("boardForm").addEventListener("submit",async e=>{
   e.preventDefault();
   const input=$("boardInput"); const text=input.value.trim(); if(!text) return;
