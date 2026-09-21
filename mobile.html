@@ -111,7 +111,7 @@
   .pghead{display:flex;align-items:center;gap:8px;padding:2px 2px 8px;border-bottom:1px dashed #3a3363;margin-bottom:8px;}
   .pghead .sp{width:26px;height:26px;object-fit:contain;} .pghead .em{font-size:20px;line-height:26px;}
   .pghead .nm{font-weight:900;font-size:14px;} .pghead .tl{margin-left:auto;font-size:11px;color:var(--grape);font-weight:700;}
-  .prow{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;background:var(--night2);border:2px solid var(--edge);border-radius:12px;padding:16px;}
+  .prow{display:grid;grid-template-columns:auto auto 1fr auto;gap:10px;align-items:center;background:var(--night2);border:2px solid var(--edge);border-radius:12px;padding:16px;}
   .prow + .prow{margin-top:12px;}
   .prow .info{min-width:0;}
   .prow .ch{font-size:22px;font-weight:800;font-family:"PMingLiU","新細明體",serif;} .prow .who{font-size:13px;color:var(--grape);margin-top:3px;} .prow .cd{font-size:30px;}
@@ -119,6 +119,8 @@
   .prow .kill{background:var(--leaf);color:#06210f;border:2px solid var(--edge);border-radius:10px;padding:16px 18px;font-size:18px;font-weight:900;box-shadow:0 3px 0 var(--edge);white-space:nowrap;}
   .prow .kill:active{transform:translateY(3px);box-shadow:0 0 0 var(--edge);}
   .prow .kill:active{transform:translateY(2px);box-shadow:0 0 0 var(--edge);}
+  .prow .pdel{background:#3a1c28;color:var(--ember);border:2px solid var(--edge);border-radius:10px;padding:16px 14px;font-size:16px;font-weight:900;box-shadow:0 2px 0 var(--edge);}
+  .prow .pdel:active{transform:translateY(2px);box-shadow:0 0 0 var(--edge);}
 
   /* records list */
   .rec{display:flex;align-items:center;gap:10px;background:var(--night2);border:2px solid var(--edge);border-radius:10px;padding:10px;margin-bottom:8px;}
@@ -537,11 +539,13 @@ function renderPatrol(now){
   if(!items.length){ box.innerHTML=`<div class="empty">「${escapeHtml(b0.name)}」目前沒有快出現的頻道。<br>點上面其他王切換。</div>`; return; }
   const rows=items.map(it=>`<div class="prow ${it.st}">
       <button class="kill" data-boss="${it.boss}" data-ch="${it.ch}">⚔ 擊殺</button>
+      <button class="pdel" data-boss="${it.boss}" data-ch="${it.ch}" title="刪除此頻道紀錄">🗑</button>
       <div class="info"><div class="ch pix">CH${it.ch}</div><div class="who">${escapeHtml(it.killer||"匿名")} 擊殺</div></div>
       <div class="cd pix" data-cd="${it.boss}_${it.ch}">${remainText(it,now)}</div>
     </div>`).join("");
   box.innerHTML=`<div class="pgroup"><div class="pghead">${spriteTag(b0,"sp","em",20)}<span class="nm">${escapeHtml(b0.name)}</span><span class="tl">${items.length} 個頻道</span></div>${rows}</div>`;
   box.querySelectorAll(".kill").forEach(btn=>btn.addEventListener("click",()=>recordKill(btn.dataset.boss,Number(btn.dataset.ch))));
+  box.querySelectorAll(".pdel").forEach(btn=>btn.addEventListener("click",()=>deleteKill(killId(btn.dataset.boss,Number(btn.dataset.ch)))));
 }
 function buildRecFilter(){
   const sel=$("recFilter");
