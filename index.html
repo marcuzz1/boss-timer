@@ -670,6 +670,8 @@ const serverNow = () => Date.now() + serverTimeOffset;
 const killId = (bossKey, ch) => `${bossKey}_${ch}`;
 const patrolBox = document.getElementById("patrol");            // 保留參照,搬進子母畫面後仍可更新
 const patrolDetachEl = document.getElementById("patrolDetach");
+const gridBox = document.getElementById("grid");                // 同上,格子搬出去後也要能更新
+const cellEls = [], cdEls = [];                                 // 保留每格與倒數文字的參照
 
 /* ---------- helpers ---------- */
 const isFloating = b => b.respawnMin !== b.respawnMax;
@@ -803,7 +805,8 @@ function buildPicker() {
   sel.value = currentBoss;
 }
 function buildGrid() {
-  const grid = $("grid"); grid.innerHTML = "";
+  const grid = gridBox; grid.innerHTML = "";
+  cellEls.length = 0; cdEls.length = 0;
   for (let i = 1; i <= CHANNELS; i++) {
     const cell = document.createElement("div");
     cell.className = "cell"; cell.id = `cell-${i}`; cell.tabIndex = 0;
@@ -812,6 +815,8 @@ function buildGrid() {
     cell.addEventListener("dblclick", () => recordKill(currentBoss, i));
     cell.addEventListener("keydown", e => { if (e.key === "Enter") recordKill(currentBoss, i); });
     grid.appendChild(cell);
+    cellEls[i] = cell;
+    cdEls[i] = cell.querySelector(".cd");
   }
 }
 function buildRecFilter() {
@@ -1028,7 +1033,9 @@ function renderHero(now) {
 function renderGrid() {
   const now = serverNow();
   for (let i = 1; i <= CHANNELS; i++) {
-    const cell = $(`cell-${i}`), cd = $(`cd-${i}`), item = kills[killId(currentBoss, i)], st = stateOf(item, now);
+    const cell = cellEls[i], cd = cdEls[i];
+    if (!cell || !cd) continue;
+    const item = kills[killId(currentBoss, i)], st = stateOf(item, now);
     cell.classList.remove("counting","soon","window","overdue","selected");
     if (st !== "idle") cell.classList.add(st);
     if (selectedCh === i) cell.classList.add("selected");
