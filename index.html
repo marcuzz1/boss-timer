@@ -454,7 +454,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
 import { getDatabase, ref, onValue, set, remove, push, query, limitToLast } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js";
-import { getAuth, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+import { getAuth, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-functions.js";
 
 const firebaseConfig = {
@@ -499,16 +499,23 @@ function showLogin(msg) {
     <a href="${discordLoginUrl()}" style="display:inline-block;background:#5865F2;color:#fff;text-decoration:none;font-weight:800;padding:12px 22px;border-radius:8px;">用 Discord 登入</a>
   `);
 }
+const VERIFY_TTL = 24 * 60 * 60 * 1000;   // 每 24 小時重新驗證身分組
+const verifiedFresh = () => { const t = Number(localStorage.getItem("bt_verified_at") || 0); return t && (Date.now() - t) < VERIFY_TTL; };
+let needReverify = false;
 const _authCode = new URLSearchParams(location.search).get("code");
 gateShow('<div style="font-size:16px;">載入中…</div>');
 onAuthStateChanged(auth, user => {
-  if (user) gateHide();
-  else if (!_authCode) showLogin();
+  if (user && verifiedFresh()) { gateHide(); return; }
+  if (user && !verifiedFresh()) { needReverify = true; signOut(auth); return; }
+  if (_authCode) return;
+  showLogin(needReverify ? "已超過 24 小時,請重新用 Discord 驗證身分組。" : undefined);
 });
 if (_authCode) {
   gateShow('<div style="font-size:16px;">驗證中…</div>');
   httpsCallable(fns, "discordAuth")({ code: _authCode })
     .then(res => signInWithCustomToken(auth, res.data.token).then(() => {
+      localStorage.setItem("bt_verified_at", String(Date.now()));
+      needReverify = false;
       if (res.data.name) {
         if (!localStorage.getItem("bt_nick")) localStorage.setItem("bt_nick", res.data.name);
         const ne = document.getElementById("nick"); if (ne && !ne.value) ne.value = res.data.name;
@@ -517,6 +524,8 @@ if (_authCode) {
     }))
     .catch(err => { history.replaceState(null, "", location.pathname); showLogin((err && err.message) || "驗證失敗,請重新登入"); });
 }
+// 每 5 分鐘檢查一次,超過 24 小時就登出要求重新驗證
+setInterval(() => { if (auth.currentUser && !verifiedFresh()) { needReverify = true; signOut(auth); } }, 5 * 60 * 1000);
 
 /* ===== 設定：BOSS 與重生時間（分鐘）。min===max 為固定,不同為浮動區間。 ===== */
 const IMG = "https://maplebossteam.com/assets/bosses/";
