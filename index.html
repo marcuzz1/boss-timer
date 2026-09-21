@@ -297,6 +297,13 @@
     .masthead { flex-wrap: wrap; }
     .hero { flex-wrap: wrap; }
   }
+  /* 螢幕高度不夠時,改成整頁可捲動,避免底部被裁掉 */
+  @media (max-height: 860px) {
+    .app { height: auto; min-height: 100vh; overflow: visible; }
+    .main { overflow: visible; }
+    .col, .gridwrap, .patrolwrap, .recwrap, .boardwrap { overflow: visible; }
+    .grid, .patrol, .tablewrap, .board-msgs { overflow: visible; }
+  }
 </style>
 </head>
 <body>
