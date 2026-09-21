@@ -507,7 +507,7 @@ let needReverify = false;
 const _authCode = new URLSearchParams(location.search).get("code");
 gateShow('<div style="font-size:16px;">載入中…</div>');
 onAuthStateChanged(auth, user => {
-  if (user && verifiedFresh()) { gateHide(); return; }
+  if (user && verifiedFresh()) { startDataListeners(); gateHide(); return; }
   if (user && !verifiedFresh() && !_authCode) { needReverify = true; signOut(auth); return; }
   if (!user && !_authCode) showLogin(needReverify ? "已超過 24 小時,請重新用 Discord 驗證身分組。" : undefined);
 });
@@ -523,7 +523,7 @@ if (_authCode) {
       }
       return signInWithCustomToken(auth, res.data.token);
     })
-    .then(() => { history.replaceState(null, "", location.pathname); gateHide(); })
+    .then(() => { history.replaceState(null, "", location.pathname); startDataListeners(); gateHide(); })
     .catch(err => { history.replaceState(null, "", location.pathname); showLogin((err && err.message) || "驗證失敗,請重新登入"); });
 }
 // 每 5 分鐘檢查一次,超過 24 小時就登出要求重新驗證
@@ -947,7 +947,25 @@ onValue(connectedRef, s => {
     else if (bs.textContent.includes("尚未連線")) bs.textContent = "";
   }
 });
-onValue(killsRef, s => { kills = s.val() || {}; const now = serverNow(); renderHero(now); renderGrid(); renderPatrol(now); renderRecords(now); });
+// 需要登入後才有讀取權限的資料監聽器,登入成功後才啟動,並避免重複訂閱
+let _dataListenersStarted = false;
+function startDataListeners() {
+  if (_dataListenersStarted) return;
+  _dataListenersStarted = true;
+  onValue(killsRef, s => { kills = s.val() || {}; const now = serverNow(); renderHero(now); renderGrid(); renderPatrol(now); renderRecords(now); });
+  onValue(boardRef, s => {
+    const obj = s.val() || {};
+    const list = Object.entries(obj)
+      .map(([id, m]) => ({ id, name: m && m.name, text: m && m.text, time: (m && m.time) || 0 }))
+      .sort((a, b) => a.time - b.time)
+      .slice(-100);
+    renderBoard(list);
+  }, err => {
+    console.error("board read failed:", err);
+    const tally = $("boardTally");
+    if (tally) tally.innerHTML = '<span style="color:var(--ember)">讀取失敗</span>';
+  });
+}
 
 /* ---------- message board ---------- */
 function renderBoard(list) {
@@ -963,18 +981,8 @@ function renderBoard(list) {
   box.scrollTop = box.scrollHeight;
 }
 // 讀整包留言,自己依時間排序後取最新 100 則（少用一層 query,較穩定）
-onValue(boardRef, s => {
-  const obj = s.val() || {};
-  const list = Object.entries(obj)
-    .map(([id, m]) => ({ id, name: m && m.name, text: m && m.text, time: (m && m.time) || 0 }))
-    .sort((a, b) => a.time - b.time)
-    .slice(-100);
-  renderBoard(list);
-}, err => {
-  console.error("board read failed:", err);
-  const tally = $("boardTally");
-  if (tally) tally.innerHTML = '<span style="color:var(--ember)">讀取失敗</span>';
-});
+// 實際訂閱移至 startDataListeners()（登入後才啟動）
+
 $("boardForm").addEventListener("submit", async e => {
   e.preventDefault();
   const input = $("boardInput");
