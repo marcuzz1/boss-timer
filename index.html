@@ -1257,7 +1257,9 @@ window.addEventListener("keydown", e => { if (e.key === "Escape") closeChat(); }
 /* ---------- 可抽離面板:原生子母畫面（Document PiP）,不支援或已佔用時退回頁內浮動視窗 ---------- */
 const PIP_LAYOUT_CSS = [
   "html,body{height:100%;margin:0;}",
-  "body{background:#000;padding:10px;display:flex;flex-direction:column;font-family:'Noto Sans TC',sans-serif;color:#fdf3df;overflow-x:hidden;}",
+  "body{background:#000;padding:10px;display:flex;flex-direction:column;gap:8px;font-family:'Noto Sans TC',sans-serif;color:#fdf3df;overflow-x:hidden;}",
+  ".pipSec{flex:1 1 0;min-height:0;display:flex;flex-direction:column;}",
+  ".pipSec + .pipSec{border-top:1px solid #2b2b38;padding-top:8px;}",
   ".pipTitle{flex:0 0 auto;font-weight:900;color:#ffce54;margin-bottom:8px;}",
   ".patrolDetach{flex:1;min-height:0;display:flex;flex-direction:column;container-type:inline-size;container-name:patrol;}",
   ".patrol{flex:1;min-height:0;overflow-y:auto;}",
@@ -1272,8 +1274,9 @@ const panels = new Map();
   { key: "channel", el: $("channelDetach"), btn: $("chPipBtn"), title: "📺 頻道 CH1–60", size: { width: 430, height: 560 } },
 ].forEach(p => { if (p.el && p.btn) panels.set(p.key, { ...p, home: p.el.parentNode }); });
 
-let pipWin = null, pipKey = null;   // 原生子母畫面同時只能開一個
-const floatWins = new Map();        // key -> 頁內浮動視窗元素
+let pipWin = null;                  // 原生子母畫面:整頁只能有一個,兩個面板共用
+const pipSecs = new Map();          // key -> 子母畫面內的區塊元素
+const floatWins = new Map();        // key -> 頁內浮動視窗元素（瀏覽器不支援原生時的退路）
 
 function setPipBtn(p, open) {
   p.btn.textContent = open ? "✕ 關閉子母畫面" : "🔲 子母畫面";
@@ -1289,33 +1292,64 @@ function copyStylesTo(win) {
     }
   });
 }
+function returnHome(key) {
+  const p = panels.get(key);
+  if (!p) return;
+  p.home.appendChild(p.el);
+  setPipBtn(p, false);
+}
 async function togglePip(key) {
   const p = panels.get(key);
   if (!p) return;
-  if (floatWins.has(key)) { closeFloat(key); return; }            // 已開浮動視窗 → 收回
-  if (pipKey === key && pipWin) { pipWin.close(); return; }        // 已開子母畫面 → 關掉
-  if ("documentPictureInPicture" in window && !pipWin) {
-    try { pipWin = await window.documentPictureInPicture.requestWindow(p.size); }
-    catch (e) { openFloat(key); return; }
-    pipKey = key;
-    copyStylesTo(pipWin);
-    const layout = pipWin.document.createElement("style");
-    layout.textContent = PIP_LAYOUT_CSS;
-    pipWin.document.head.appendChild(layout);
-    const title = pipWin.document.createElement("div");
-    title.className = "pipTitle";
-    title.textContent = p.title;
-    pipWin.document.body.appendChild(title);
-    pipWin.document.body.appendChild(p.el);
-    setPipBtn(p, true);
-    pipWin.addEventListener("pagehide", () => {
-      p.home.appendChild(p.el);
-      setPipBtn(p, false);
-      pipWin = null; pipKey = null;
-    });
-  } else {
-    openFloat(key);   // 瀏覽器不支援,或原生子母畫面已被另一個面板佔用
+  if (pipSecs.has(key)) { removeFromPip(key); return; }            // 已在子母畫面 → 收回
+  if (floatWins.has(key)) { closeFloat(key); return; }             // 已開浮動視窗 → 收回
+  if ("documentPictureInPicture" in window) {
+    try {
+      if (!pipWin) {
+        pipWin = await window.documentPictureInPicture.requestWindow(p.size);
+        copyStylesTo(pipWin);
+        const layout = pipWin.document.createElement("style");
+        layout.textContent = PIP_LAYOUT_CSS;
+        pipWin.document.head.appendChild(layout);
+        // 使用者直接關掉視窗 → 裡面的面板全部搬回原位
+        pipWin.addEventListener("pagehide", () => {
+          [...pipSecs.keys()].forEach(returnHome);
+          pipSecs.clear();
+          pipWin = null;
+        });
+      } else {
+        // 已經有一個原生視窗:把面板加進同一個視窗,兩個都留在最上層
+        try { pipWin.resizeBy(0, Math.round(p.size.height * 0.6)); } catch (e) { /* 不能調整就算了 */ }
+      }
+      addToPip(key);
+      return;
+    } catch (e) {
+      openFloat(key);   // 使用者拒絕或瀏覽器擋下 → 退回頁內浮動視窗
+      return;
+    }
   }
+  openFloat(key);       // 瀏覽器不支援 Document PiP
+}
+function addToPip(key) {
+  const p = panels.get(key);
+  const sec = pipWin.document.createElement("section");
+  sec.className = "pipSec";
+  const title = pipWin.document.createElement("div");
+  title.className = "pipTitle";
+  title.textContent = p.title;
+  sec.appendChild(title);
+  sec.appendChild(p.el);
+  pipWin.document.body.appendChild(sec);
+  pipSecs.set(key, sec);
+  setPipBtn(p, true);
+}
+function removeFromPip(key) {
+  const sec = pipSecs.get(key);
+  if (!sec) return;
+  returnHome(key);
+  sec.remove();
+  pipSecs.delete(key);
+  if (!pipSecs.size && pipWin) pipWin.close();   // 最後一個收回就把視窗關掉
 }
 function openFloat(key) {
   const p = panels.get(key);
