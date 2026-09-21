@@ -247,6 +247,8 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
 import { getDatabase, ref, onValue, set, remove, push, query, limitToLast } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js";
+import { getAuth, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-functions.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAcJeu3tKJdgIFv62MEueYGTyHpyF_MCng",
@@ -260,6 +262,50 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+
+/* ===== Discord 登入閘門 ===== */
+const auth = getAuth(app);
+const fns = getFunctions(app, "asia-east1");
+const DISCORD_CLIENT_ID = "1551417371053269032";
+const DISCORD_REDIRECT = "https://marcuzz1.github.io/boss-timer/";
+function gateEl(){
+  let o=document.getElementById("authGate");
+  if(!o){ o=document.createElement("div"); o.id="authGate";
+    o.style.cssText="position:fixed;inset:0;z-index:100000;background:#000;color:#fdf3df;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;font-family:'Noto Sans TC',sans-serif;";
+    document.body.appendChild(o);
+  }
+  return o;
+}
+function gateShow(inner){ const o=gateEl(); o.innerHTML=`<div style="max-width:420px;">${inner}</div>`; o.style.display="flex"; }
+function gateHide(){ const o=document.getElementById("authGate"); if(o) o.style.display="none"; }
+function discordLoginUrl(){
+  const p=new URLSearchParams({ client_id:DISCORD_CLIENT_ID, redirect_uri:DISCORD_REDIRECT, response_type:"code", scope:"identify guilds.members.read" });
+  return "https://discord.com/api/oauth2/authorize?"+p.toString();
+}
+function showLogin(msg){
+  gateShow(`
+    <div style="font-size:44px;margin-bottom:10px;">🔒</div>
+    <div style="font-size:20px;font-weight:900;margin-bottom:8px;">需要 Discord 驗證</div>
+    <div style="color:#b6a6e2;font-size:14px;line-height:1.7;margin-bottom:18px;">${msg||"請用 Discord 登入,並需擁有指定身分組才能使用。"}</div>
+    <a href="${discordLoginUrl()}" style="display:inline-block;background:#5865F2;color:#fff;text-decoration:none;font-weight:800;padding:12px 22px;border-radius:8px;">用 Discord 登入</a>
+  `);
+}
+const _authCode=new URLSearchParams(location.search).get("code");
+gateShow('<div style="font-size:16px;">載入中…</div>');
+onAuthStateChanged(auth, user => { if(user) gateHide(); else if(!_authCode) showLogin(); });
+if(_authCode){
+  gateShow('<div style="font-size:16px;">驗證中…</div>');
+  httpsCallable(fns,"discordAuth")({ code:_authCode })
+    .then(res => signInWithCustomToken(auth, res.data.token).then(()=>{
+      if(res.data.name){
+        if(!localStorage.getItem("bt_nick")) localStorage.setItem("bt_nick", res.data.name);
+        const k=document.getElementById("killerInput"); if(k && !k.value) k.value=res.data.name;
+        const b=document.getElementById("boardName"); if(b && !b.value) b.value=res.data.name;
+      }
+      history.replaceState(null,"",location.pathname);
+    }))
+    .catch(err => { history.replaceState(null,"",location.pathname); showLogin((err&&err.message)||"驗證失敗,請重新登入"); });
+}
 
 /* 與桌機版共用同一份設定與資料 */
 const IMG = "https://maplebossteam.com/assets/bosses/";
