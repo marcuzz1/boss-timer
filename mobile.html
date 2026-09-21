@@ -133,7 +133,7 @@
   .msg{background:var(--night2);border:2px solid var(--edge);border-radius:10px;padding:9px 11px;}
   .msg .who{font-size:12px;color:var(--gold);font-weight:700;} .msg .who time{color:var(--grape);font-weight:500;margin-left:6px;}
   .msg .say{font-size:14px;line-height:1.45;word-break:break-word;margin-top:3px;}
-  .bform{position:fixed;left:0;right:0;bottom:calc(var(--tabh) + env(safe-area-inset-bottom));z-index:25;background:#000;border-top:1px solid var(--edge);padding:8px 12px;display:grid;grid-template-columns:96px 1fr auto;gap:7px;}
+  .bform{position:fixed;left:0;right:0;bottom:calc(var(--tabh) + env(safe-area-inset-bottom));z-index:25;background:#000;border-top:1px solid var(--edge);padding:8px 12px;display:grid;grid-template-columns:1fr auto;gap:7px;}
   .bform input{background:var(--night2);color:var(--cream);border:2px solid var(--edge);border-radius:9px;padding:12px 11px;font-size:15px;outline:none;min-width:0;}
   .bform input:focus{border-color:var(--gold);}
   .bform button{background:var(--leaf);color:#06210f;border:2px solid var(--edge);border-radius:9px;padding:0 16px;font-size:15px;font-weight:900;}
@@ -230,7 +230,6 @@
     <div class="h2">留言板<span class="tally" id="boardTally">連線中…</span></div>
     <div class="msgs" id="boardMsgs"><div class="empty">還沒有留言。打聲招呼、報個王吧！</div></div>
     <form class="bform" id="boardForm">
-      <input id="boardName" type="text" maxlength="16" placeholder="你的 ID">
       <input id="boardInput" type="text" maxlength="120" placeholder="輸入留言…">
       <button type="submit">送出</button>
     </form>
@@ -297,23 +296,22 @@ const _authCode=new URLSearchParams(location.search).get("code");
 gateShow('<div style="font-size:16px;">載入中…</div>');
 onAuthStateChanged(auth, user => {
   if(user && verifiedFresh()){ gateHide(); return; }
-  if(user && !verifiedFresh()){ needReverify=true; signOut(auth); return; }
-  if(_authCode) return;
-  showLogin(needReverify ? "已超過 24 小時,請重新用 Discord 驗證身分組。" : undefined);
+  if(user && !verifiedFresh() && !_authCode){ needReverify=true; signOut(auth); return; }
+  if(!user && !_authCode) showLogin(needReverify ? "已超過 24 小時,請重新用 Discord 驗證身分組。" : undefined);
 });
 if(_authCode){
   gateShow('<div style="font-size:16px;">驗證中…</div>');
   httpsCallable(fns,"discordAuth")({ code:_authCode })
-    .then(res => signInWithCustomToken(auth, res.data.token).then(()=>{
+    .then(res => {
       localStorage.setItem("bt_verified_at", String(Date.now()));
       needReverify=false;
       if(res.data.name){
         if(!localStorage.getItem("bt_nick")) localStorage.setItem("bt_nick", res.data.name);
         const k=document.getElementById("killerInput"); if(k && !k.value) k.value=res.data.name;
-        const b=document.getElementById("boardName"); if(b && !b.value) b.value=res.data.name;
       }
-      history.replaceState(null,"",location.pathname);
-    }))
+      return signInWithCustomToken(auth, res.data.token);
+    })
+    .then(()=>{ history.replaceState(null,"",location.pathname); gateHide(); })
     .catch(err => { history.replaceState(null,"",location.pathname); showLogin((err&&err.message)||"驗證失敗,請重新登入"); });
 }
 setInterval(()=>{ if(auth.currentUser && !verifiedFresh()){ needReverify=true; signOut(auth); } }, 5*60*1000);
@@ -619,8 +617,7 @@ $("clearAllBtn").addEventListener("click",clearAll);
 $("boardForm").addEventListener("submit",async e=>{
   e.preventDefault();
   const input=$("boardInput"); const text=input.value.trim(); if(!text) return;
-  const name=($("boardName").value.trim()||localStorage.getItem("bt_nick")||"匿名").slice(0,16);
-  localStorage.setItem("bt_nick",name); $("boardName").value=name;
+  const name=requireNick(); if(!name) return;
   if(!connected){ alert("尚未連線,留言送不出去。請重新整理或換個網路。"); return; }
   input.value="";
   try{ await push(boardRef,{name,text:text.slice(0,120),time:serverNow()}); }
@@ -641,7 +638,7 @@ window.addEventListener("pointerdown",ensureAudio,{once:true});
 
 /* init */
 const savedNick=localStorage.getItem("bt_nick");
-if(savedNick){ $("boardName").value=savedNick; $("killerInput").value=savedNick; }
+if(savedNick){ $("killerInput").value=savedNick; }
 $("killerInput").addEventListener("input",()=>{ if($("killerInput").value.trim()) $("killerInput").classList.remove("need"); });
 $("soundBtn").textContent=soundOn?"🔊":"🔇"; $("soundBtn").classList.toggle("off",!soundOn);
 buildPicker(); buildGrid(); buildPatrolChips(); buildRecFilter(); setCurrentBoss(currentBoss);

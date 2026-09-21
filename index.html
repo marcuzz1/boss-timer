@@ -256,7 +256,7 @@
   .msg .who { font-size: 11px; color: var(--gold); font-weight: 700; }
   .msg .who time { color: var(--grape); font-weight: 500; margin-left: 6px; }
   .msg .say { font-size: 13px; color: var(--cream); line-height: 1.45; word-break: break-word; margin-top: 2px; }
-  .board-form { display: grid; grid-template-columns: 92px 1fr auto; gap: 6px; margin-top: 8px; }
+  .board-form { display: grid; grid-template-columns: 1fr auto; gap: 6px; margin-top: 8px; }
   .board-form input {
     width: 100%; background: var(--night2); color: var(--cream); font-family: inherit;
     border: 2px solid var(--edge); border-radius: 6px; padding: 9px 10px; font-size: 13px; outline: none;
@@ -440,7 +440,6 @@
       </div>
       <div class="board-msgs" id="boardMsgs"><div class="empty">還沒有留言。打聲招呼、報個王吧！</div></div>
       <form class="board-form" id="boardForm">
-        <input id="boardName" type="text" maxlength="16" placeholder="你的 ID" aria-label="你的 ID">
         <input id="boardInput" type="text" maxlength="120" placeholder="輸入留言…" aria-label="留言內容">
         <button class="btn-go" type="submit">送出</button>
       </form>
@@ -506,22 +505,22 @@ const _authCode = new URLSearchParams(location.search).get("code");
 gateShow('<div style="font-size:16px;">載入中…</div>');
 onAuthStateChanged(auth, user => {
   if (user && verifiedFresh()) { gateHide(); return; }
-  if (user && !verifiedFresh()) { needReverify = true; signOut(auth); return; }
-  if (_authCode) return;
-  showLogin(needReverify ? "已超過 24 小時,請重新用 Discord 驗證身分組。" : undefined);
+  if (user && !verifiedFresh() && !_authCode) { needReverify = true; signOut(auth); return; }
+  if (!user && !_authCode) showLogin(needReverify ? "已超過 24 小時,請重新用 Discord 驗證身分組。" : undefined);
 });
 if (_authCode) {
   gateShow('<div style="font-size:16px;">驗證中…</div>');
   httpsCallable(fns, "discordAuth")({ code: _authCode })
-    .then(res => signInWithCustomToken(auth, res.data.token).then(() => {
+    .then(res => {
       localStorage.setItem("bt_verified_at", String(Date.now()));
       needReverify = false;
       if (res.data.name) {
         if (!localStorage.getItem("bt_nick")) localStorage.setItem("bt_nick", res.data.name);
         const ne = document.getElementById("nick"); if (ne && !ne.value) ne.value = res.data.name;
       }
-      history.replaceState(null, "", location.pathname);
-    }))
+      return signInWithCustomToken(auth, res.data.token);
+    })
+    .then(() => { history.replaceState(null, "", location.pathname); gateHide(); })
     .catch(err => { history.replaceState(null, "", location.pathname); showLogin((err && err.message) || "驗證失敗,請重新登入"); });
 }
 // 每 5 分鐘檢查一次,超過 24 小時就登出要求重新驗證
@@ -975,9 +974,8 @@ $("boardForm").addEventListener("submit", async e => {
   const input = $("boardInput");
   const text = input.value.trim();
   if (!text) return;
-  const name = ($("boardName").value.trim() || $("nick").value.trim() || "匿名").slice(0, 16);
-  localStorage.setItem("bt_nick", name);
-  $("nick").value = name;
+  const name = requireNick();
+  if (!name) return;
   const status = $("boardStatus");
   if (!connected) { status.innerHTML = '<span style="color:var(--ember)">⚠ 尚未連線,無法送出。請重新整理或換網路。</span>'; return; }
   status.textContent = "送出中…";
@@ -1113,7 +1111,7 @@ window.addEventListener("keydown", ensureAudio, { once: true });
 
 /* ---------- init ---------- */
 const savedNick = localStorage.getItem("bt_nick");
-if (savedNick) { nickEl.value = savedNick; $("boardName").value = savedNick; }
+if (savedNick) { nickEl.value = savedNick; }
 refreshSoundBtn();
 buildPicker();
 buildGrid();
