@@ -245,10 +245,15 @@
   .rtab.on { background: var(--panel2); color: var(--gold); border-color: var(--gold); }
   .rtab:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
   .hact { padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 11px; border: 1px solid var(--edge); white-space: nowrap; }
-  .hact.add { background: rgba(94,203,122,.2); color: var(--leaf); }
+  .hact.kill, .hact.add { background: rgba(94,203,122,.2); color: var(--leaf); }
   .hact.edit { background: rgba(255,206,84,.2); color: var(--gold); }
   .hact.del { background: rgba(255,111,97,.2); color: var(--ember); }
   .hact.restore { background: rgba(176,107,255,.2); color: var(--violet); }
+  /* 紀錄/歷史清單一律自己捲動,不要把整頁撐長（ID 選擇器蓋過小螢幕的 overflow:visible） */
+  #recNowWrap, #recHistWrap { overflow-y: auto; overflow-x: auto; overscroll-behavior: contain; }
+  @media (max-width: 1100px), (max-height: 860px) {
+    #recNowWrap, #recHistWrap { max-height: 46vh; }
+  }
   .undo { background: #1d3324; color: var(--leaf); border: 1px solid var(--edge); border-radius: 5px; padding: 4px 8px; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap; }
   .undo:hover { background: #24422e; }
   td.hprev { color: var(--grape); }
@@ -840,7 +845,7 @@ async function recordKill(bossKey, ch) {
   const killTime = serverNow();
   try { await set(ref(db, `${KILLS_PATH}/${killId(bossKey, ch)}`), { boss: bossKey, bossName: b.name, ch, killer, killTime }); selectedCh = null; }
   catch (err) { console.error(err); alert("記錄沒有存上去。檢查一下 Firebase 規則有沒有開放寫入。"); return; }
-  logHistory({ action: prev ? "edit" : "add", boss: bossKey, bossName: b.name, ch, killer, killTime, prev });
+  logHistory({ action: "kill", boss: bossKey, bossName: b.name, ch, killer, killTime, prev });
 }
 async function deleteKill(id) {
   const prev = kills[id];
@@ -897,11 +902,11 @@ async function applyOverride(bossKey, chRaw, nick) {
   try {
     await set(ref(db, `${KILLS_PATH}/${killId(bossKey, ch)}`), { boss: bossKey, bossName: b.name, ch, killer, killTime });
   } catch (err) { console.error(err); alert("套用失敗,請確認 Firebase 規則。"); return; }
-  logHistory({ action: existing ? "edit" : "add", boss: bossKey, bossName: b.name, ch, killer, killTime, prev: existing });
+  logHistory({ action: "edit", boss: bossKey, bossName: b.name, ch, killer, killTime, prev: existing });
 }
 
 /* ---------- 歷史紀錄:每次變動留一筆,只保留最新 HISTORY_MAX 筆 ---------- */
-const HIST_LABEL = { add: "新增", edit: "校正", del: "刪除", restore: "復原" };
+const HIST_LABEL = { kill: "擊殺", add: "擊殺", edit: "校正", del: "刪除", restore: "復原" };
 const currentNick = () => {
   const el = $("nick");
   const v = ((el && el.value.trim()) || localStorage.getItem("bt_nick") || "").trim();
@@ -935,8 +940,8 @@ function historyRows() {
     .sort((a, b) => (b.at || 0) - (a.at || 0))
     .slice(0, HISTORY_MAX);
 }
-// 校正過的紀錄還原成「原本的時間」,其他動作還原成該筆本身
-const restoreTarget = h => (h.action === "edit" && h.prevKillTime)
+// 復原 = 拿回「這個動作發生前」的狀態:有蓋掉東西就還原被蓋掉的,沒有就把這筆寫回去
+const restoreTarget = h => h.prevKillTime
   ? { killer: h.prevKiller || h.killer, killTime: h.prevKillTime }
   : { killer: h.killer, killTime: h.killTime };
 async function restoreFromHistory(hid) {
@@ -1088,7 +1093,7 @@ function renderHistory() {
   }
   body.innerHTML = rows.map(h => {
     const act = HIST_LABEL[h.action] || h.action;
-    const timeCell = (h.action === "edit" && h.prevKillTime)
+    const timeCell = h.prevKillTime
       ? `<span class="hprev">${fmtHM(h.prevKillTime)}</span> → ${fmtHM(h.killTime)}`
       : fmtHM(h.killTime);
     return `<tr>

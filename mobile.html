@@ -148,7 +148,7 @@
   .hrow{background:var(--night2);border:2px solid var(--edge);border-radius:10px;padding:10px;margin-bottom:8px;}
   .hrow .top{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
   .hact{font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px;border:1px solid var(--edge);white-space:nowrap;}
-  .hact.add{background:rgba(94,203,122,.2);color:var(--leaf);}
+  .hact.kill,.hact.add{background:rgba(94,203,122,.2);color:var(--leaf);}
   .hact.edit{background:rgba(255,206,84,.2);color:var(--gold);}
   .hact.del{background:rgba(255,111,97,.2);color:var(--ember);}
   .hact.restore{background:rgba(176,107,255,.2);color:var(--violet);}
@@ -483,7 +483,7 @@ async function recordKill(bossKey,ch){
   const prev=kills[killId(bossKey,ch)], killTime=serverNow();
   try{ await set(ref(db,`${KILLS_PATH}/${killId(bossKey,ch)}`),{boss:bossKey,bossName:b.name,ch,killer,killTime}); selectedCh=null; }
   catch(err){ console.error(err); alert("記錄沒存上去。檢查 Firebase 規則。"); return; }
-  logHistory({action:prev?"edit":"add",boss:bossKey,bossName:b.name,ch,killer,killTime,prev});
+  logHistory({action:"kill",boss:bossKey,bossName:b.name,ch,killer,killTime,prev});
 }
 function requireNick(){
   const el=$("killerInput");
@@ -533,11 +533,11 @@ async function applyOverride(bossKey,chRaw){
   const killer=((existing&&existing.killer)||localStorage.getItem("bt_nick")||"匿名").slice(0,16);
   try{ await set(ref(db,`${KILLS_PATH}/${killId(bossKey,ch)}`),{boss:bossKey,bossName:b.name,ch,killer,killTime}); }
   catch(err){ console.error(err); alert("套用失敗,請確認 Firebase 規則。"); return; }
-  logHistory({action:existing?"edit":"add",boss:bossKey,bossName:b.name,ch,killer,killTime,prev:existing});
+  logHistory({action:"edit",boss:bossKey,bossName:b.name,ch,killer,killTime,prev:existing});
 }
 
 /* 歷史紀錄:每次變動留一筆,只保留最新 HISTORY_MAX 筆,最新的在最上面 */
-const HIST_LABEL={add:"新增",edit:"校正",del:"刪除",restore:"復原"};
+const HIST_LABEL={kill:"擊殺",add:"擊殺",edit:"校正",del:"刪除",restore:"復原"};
 const currentNick=()=>{
   const el=$("killerInput");
   const v=((el&&el.value.trim())||localStorage.getItem("bt_nick")||"").trim();
@@ -565,7 +565,7 @@ const historyRows=()=>Object.entries(histLog)
   .map(([id,h])=>({id,...h}))
   .sort((a,b)=>(b.at||0)-(a.at||0))
   .slice(0,HISTORY_MAX);
-const restoreTarget=h=>(h.action==="edit"&&h.prevKillTime)
+const restoreTarget=h=>h.prevKillTime
   ? {killer:h.prevKiller||h.killer,killTime:h.prevKillTime}
   : {killer:h.killer,killTime:h.killTime};
 async function restoreFromHistory(hid){
@@ -675,7 +675,7 @@ function renderHistory(){
   if(!rows.length){ box.innerHTML='<div class="empty">這個篩選沒有歷史紀錄。<br>之後新增、校正、刪除都會留在這裡（最新 50 筆）。</div>'; return; }
   box.innerHTML=rows.map(h=>{
     const act=HIST_LABEL[h.action]||h.action;
-    const timeText=(h.action==="edit"&&h.prevKillTime)
+    const timeText=h.prevKillTime
       ? `<span class="prevt">${fmtHM(h.prevKillTime)}</span> → ${fmtHM(h.killTime)}`
       : fmtHM(h.killTime);
     return `<div class="hrow">
