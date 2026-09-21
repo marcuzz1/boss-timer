@@ -79,6 +79,8 @@
     font-family: inherit;
   }
   .mast-field:focus-visible { border-color: var(--gold); }
+  .mast-field.need { border-color: var(--ember); box-shadow: 0 0 0 3px rgba(255,111,97,.35); }
+  .mast-field.need::placeholder { color: var(--ember); }
   .conn { font-size: 12px; font-weight: 700; color: var(--gold); white-space: nowrap; }
   .conn.on { color: var(--leaf); }
 
@@ -652,12 +654,21 @@ function updateEstimate() {
 }
 
 /* ---------- firebase writes ---------- */
+// 暱稱必填：沒填就紅框提示並聚焦,回傳 null
+function requireNick() {
+  const el = $("nick");
+  const v = el.value.trim();
+  if (!v) { el.classList.add("need"); el.placeholder = "請先輸入暱稱！"; el.focus(); return null; }
+  el.classList.remove("need");
+  return v.slice(0, 16);
+}
 async function recordKill(bossKey, ch) {
   ch = Number(ch);
   if (!ch || ch < 1 || ch > CHANNELS) { alert("請輸入 1~60 的頻道"); return; }
+  const nick = requireNick();
+  if (!nick) return;
   const b = bossByKey[bossKey];
-  const nick = $("nick").value.trim();
-  const killer = ($("killerInput").value.trim() || nick || "匿名").slice(0, 16);
+  const killer = ($("killerInput").value.trim() || nick).slice(0, 16);
   try { await set(ref(db, `${KILLS_PATH}/${killId(bossKey, ch)}`), { boss: bossKey, bossName: b.name, ch, killer, killTime: serverNow() }); selectedCh = null; }
   catch (err) { console.error(err); alert("記錄沒有存上去。檢查一下 Firebase 規則有沒有開放寫入。"); }
 }
@@ -988,10 +999,11 @@ function syncOvMode() {
 }
 $("ovMode").addEventListener("change", syncOvMode);
 syncOvMode();
-$("ovBtn").addEventListener("click", () => applyOverride(currentBoss, $("chInput").value, $("nick").value.trim()));
+$("ovBtn").addEventListener("click", () => { const nk = requireNick(); if (!nk) return; applyOverride(currentBoss, $("chInput").value, nk); });
 $("chInput").addEventListener("keydown", e => { if (e.key === "Enter") recordKill(currentBoss, $("chInput").value); });
 const nickEl = $("nick");
 nickEl.addEventListener("change", () => localStorage.setItem("bt_nick", nickEl.value.trim()));
+nickEl.addEventListener("input", () => { if (nickEl.value.trim()) nickEl.classList.remove("need"); });
 
 const soundBtn = $("soundBtn");
 function refreshSoundBtn() { soundBtn.textContent = soundOn ? "🔊 音效" : "🔇 靜音"; soundBtn.classList.toggle("off", !soundOn); }
