@@ -264,14 +264,37 @@
   .board-form input:focus-visible { border-color: var(--gold); }
 
   /* board popup */
-  .modal-backdrop { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.62); display: none; align-items: center; justify-content: center; padding: 20px; }
-  .modal-backdrop.open { display: flex; }
-  .modal { width: min(520px, 96%); height: min(74vh, 660px); display: flex; flex-direction: column; padding: 14px 16px; }
-  .modal-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-  .modal-head h2 { margin: 0; font-size: 18px; font-weight: 900; }
-  .modal-close { margin-left: auto; background: var(--panel2); color: var(--cream); border: 2px solid var(--edge); border-radius: 6px; padding: 6px 12px; font-size: 15px; font-weight: 900; box-shadow: 0 3px 0 var(--edge); }
-  .modal-close:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--edge); }
-  .modal .board-msgs { flex: 1; min-height: 0; }
+  /* 右下角聊天視窗（FB 風） */
+  .chatFab {
+    position: fixed; right: 20px; bottom: 20px; z-index: 90;
+    width: 56px; height: 56px; border-radius: 50%; border: 2px solid var(--edge);
+    background: var(--accent); color: #fff; font-size: 26px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 22px rgba(0,0,0,.5);
+  }
+  .chatFab:active { transform: translateY(2px); }
+  .chatBadge {
+    position: absolute; top: -3px; right: -3px; background: var(--ember); color: #fff;
+    font-size: 11px; font-weight: 800; min-width: 18px; height: 18px; border-radius: 999px;
+    display: flex; align-items: center; justify-content: center; padding: 0 4px; border: 2px solid var(--night2);
+  }
+  .chatWidget {
+    position: fixed; right: 20px; bottom: 86px; z-index: 91;
+    width: 340px; height: 460px; max-height: calc(100vh - 110px);
+    background: var(--panel); border: 2px solid var(--edge); border-radius: 12px;
+    display: none; flex-direction: column; overflow: hidden; box-shadow: 0 14px 40px rgba(0,0,0,.6);
+  }
+  .chatWidget.open { display: flex; }
+  .chatHead { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--panel2); border-bottom: 1px solid var(--edge); }
+  .chatHead .chatTitle { font-weight: 900; font-size: 15px; }
+  .chatHead .tally { font-size: 12px; color: var(--grape); font-weight: 700; }
+  .chatHead .chatMin { margin-left: auto; background: transparent; border: none; color: var(--cream); font-size: 20px; font-weight: 900; cursor: pointer; line-height: 1; padding: 0 4px; }
+  .chatWidget .board-msgs { flex: 1; min-height: 0; padding: 10px; }
+  .chatWidget .board-form { padding: 0 10px; margin-top: 0; margin-bottom: 8px; }
+  @media (max-width: 520px) {
+    .chatWidget { width: calc(100vw - 24px); right: 12px; }
+    .chatFab { right: 14px; bottom: 14px; }
+  }
 
   /* motion only where it signals state, and only if the visitor allows it */
   @media (prefers-reduced-motion: no-preference) {
@@ -317,7 +340,6 @@
     <div class="mast-clock pix" id="clock">--:--:--</div>
     <input class="mast-field" id="nick" type="text" maxlength="16" placeholder="你的暱稱" aria-label="你的暱稱">
     <button class="btn-toggle" id="soundBtn" type="button">🔊 音效</button>
-    <button class="btn-toggle" id="boardBtn" type="button">💬 留言板</button>
     <a href="mobile.html" style="text-decoration:none;color:var(--cream);font-weight:700;font-size:13px;background:var(--panel2);border:2px solid var(--edge);border-radius:6px;padding:8px 12px;box-shadow:inset 0 2px 0 rgba(255,255,255,.10), 0 3px 0 var(--edge);">📱 手機版</a>
     <button class="btn-danger" id="clearAllBtn" type="button">全部清除</button>
     <div class="conn" id="conn">● 尚未連線</div>
@@ -409,23 +431,22 @@
       </section>
     </div>
 
-    <!-- Message board popup -->
-    <div class="modal-backdrop" id="boardModal">
-      <section class="plate modal" role="dialog" aria-modal="true" aria-label="留言板">
-        <div class="modal-head">
-          <h2>💬 留言板</h2>
-          <span class="tally" id="boardTally">連線中…</span>
-          <button class="modal-close" id="boardClose" type="button" aria-label="關閉">✕</button>
-        </div>
-        <div class="board-msgs" id="boardMsgs"><div class="empty">還沒有留言。打聲招呼、報個王吧！</div></div>
-        <form class="board-form" id="boardForm">
-          <input id="boardName" type="text" maxlength="16" placeholder="你的 ID" aria-label="你的 ID">
-          <input id="boardInput" type="text" maxlength="120" placeholder="輸入留言…" aria-label="留言內容">
-          <button class="btn-go" type="submit">送出</button>
-        </form>
-        <div id="boardStatus" style="font-size:11px;color:var(--grape);margin-top:6px;min-height:14px;"></div>
-      </section>
+    <!-- 右下角聊天視窗（FB 風） -->
+    <div class="chatWidget" id="chatWidget">
+      <div class="chatHead">
+        <span class="chatTitle">💬 留言板</span>
+        <span class="tally" id="boardTally">連線中…</span>
+        <button class="chatMin" id="boardClose" type="button" aria-label="關閉">—</button>
+      </div>
+      <div class="board-msgs" id="boardMsgs"><div class="empty">還沒有留言。打聲招呼、報個王吧！</div></div>
+      <form class="board-form" id="boardForm">
+        <input id="boardName" type="text" maxlength="16" placeholder="你的 ID" aria-label="你的 ID">
+        <input id="boardInput" type="text" maxlength="120" placeholder="輸入留言…" aria-label="留言內容">
+        <button class="btn-go" type="submit">送出</button>
+      </form>
+      <div id="boardStatus" style="font-size:11px;color:var(--grape);padding:0 10px 8px;min-height:14px;"></div>
     </div>
+    <button class="chatFab" id="chatFab" type="button" aria-label="開啟留言板">💬<span class="chatBadge" id="chatBadge" style="display:none;"></span></button>
   </div>
 
 </div>
@@ -919,6 +940,7 @@ function renderBoard(list) {
   const box = $("boardMsgs");
   const tally = $("boardTally");
   if (tally) tally.textContent = `${list.length} 則`;
+  noteBoardCount(list.length);
   if (!list.length) { box.innerHTML = '<div class="empty">還沒有留言。當第一個留言的人吧！</div>'; return; }
   box.innerHTML = list.map(m => `<div class="msg">
     <div class="who">${escapeHtml(m.name || "匿名")}<time>${fmtHM(m.time || serverNow())}</time></div>
@@ -964,13 +986,23 @@ $("boardForm").addEventListener("submit", async e => {
 
 /* ---------- events ---------- */
 $("clearAllBtn").addEventListener("click", clearAll);
-const boardModal = $("boardModal");
-function openBoard() { boardModal.classList.add("open"); setTimeout(() => $("boardInput").focus(), 50); }
-function closeBoard() { boardModal.classList.remove("open"); }
-$("boardBtn").addEventListener("click", openBoard);
-$("boardClose").addEventListener("click", closeBoard);
-boardModal.addEventListener("click", e => { if (e.target === boardModal) closeBoard(); });
-window.addEventListener("keydown", e => { if (e.key === "Escape") closeBoard(); });
+const chatWidget = $("chatWidget"), chatFab = $("chatFab"), chatBadge = $("chatBadge");
+let chatOpen = false, boardCount = 0, boardSeen = 0, boardInit = false;
+function updateChatBadge() {
+  const n = Math.max(0, boardCount - boardSeen);
+  if (!chatOpen && n > 0) { chatBadge.textContent = n > 99 ? "99+" : String(n); chatBadge.style.display = "flex"; }
+  else chatBadge.style.display = "none";
+}
+function noteBoardCount(n) {
+  boardCount = n;
+  if (!boardInit) { boardInit = true; boardSeen = n; }   // 首次載入不算未讀
+  updateChatBadge();
+}
+function openChat() { chatWidget.classList.add("open"); chatOpen = true; boardSeen = boardCount; updateChatBadge(); setTimeout(() => $("boardInput").focus(), 50); }
+function closeChat() { chatWidget.classList.remove("open"); chatOpen = false; }
+chatFab.addEventListener("click", () => (chatOpen ? closeChat() : openChat()));
+$("boardClose").addEventListener("click", closeChat);
+window.addEventListener("keydown", e => { if (e.key === "Escape") closeChat(); });
 
 /* ---------- 巡查子母畫面（Document PiP，退回頁內浮動視窗） ---------- */
 const pipBtn = $("pipBtn");
