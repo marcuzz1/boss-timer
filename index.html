@@ -199,12 +199,12 @@
 
   /* ---------- patrol ---------- */
   .patrolwrap { flex: 1; min-height: 0; }
-  .patrolDetach { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .patrolDetach { flex: 1; min-height: 0; display: flex; flex-direction: column; container-type: inline-size; container-name: patrol; }
   .pipBtn { margin-left: auto; background: var(--panel2); color: var(--cream); border: 2px solid var(--edge); border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 700; box-shadow: 0 2px 0 var(--edge); cursor: pointer; }
   .pipBtn:active { transform: translateY(2px); box-shadow: 0 0 0 var(--edge); }
   .hbtn-danger { margin-left: auto; background: #3a1c28; color: var(--ember); border: 2px solid var(--edge); border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 700; box-shadow: 0 2px 0 var(--edge); cursor: pointer; }
   .hbtn-danger:active { transform: translateY(2px); box-shadow: 0 0 0 var(--edge); }
-  .floatWin { position: fixed; top: 90px; left: 90px; width: 340px; height: 440px; z-index: 9999; background: var(--panel); border: 2px solid var(--gold); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; resize: both; box-shadow: 0 12px 34px rgba(0,0,0,.6); }
+  .floatWin { position: fixed; top: 90px; left: 90px; width: 340px; height: 440px; min-width: 230px; min-height: 200px; max-width: 96vw; max-height: 92vh; z-index: 9999; background: var(--panel); border: 2px solid var(--gold); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; resize: both; box-shadow: 0 12px 34px rgba(0,0,0,.6); }
   .floatWin .fwHead { cursor: move; user-select: none; background: var(--panel2); padding: 8px 10px; display: flex; align-items: center; gap: 8px; font-weight: 900; color: var(--gold); }
   .floatWin .fwClose { margin-left: auto; background: transparent; border: none; color: var(--cream); font-size: 16px; font-weight: 900; cursor: pointer; }
   .floatWin .fwBody { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 8px; overflow: hidden; }
@@ -250,6 +250,50 @@
   .pkill:active { transform: translateY(2px); box-shadow: 0 0 0 var(--edge); }
   .pdel { background: #3a1c28; color: var(--ember); border: 2px solid var(--edge); border-radius: 8px; padding: 12px 12px; font-size: 15px; font-weight: 800; box-shadow: 0 3px 0 var(--edge); cursor: pointer; }
   .pdel:active { transform: translateY(2px); box-shadow: 0 0 0 var(--edge); }
+
+  /* ---------- 巡查區塊自適應:依「自身寬度」切換,不看瀏覽器視窗 ----------
+     子母畫面 / 浮動視窗 / 主頁欄位都共用同一套規則,縮小自動變手機版式,拉大自動回電腦版式 */
+  /* 中等寬度:保留單列,但縮小字級與間距,讓擊殺者名稱有足夠寬度 */
+  @container patrol (max-width: 620px) {
+    .patrol { gap: 8px; }
+    .prow { gap: 8px; padding: 11px 12px; }
+    .prow .pnm { font-size: 18px; }
+    .prow .pwhere { font-size: 13px; }
+    .prow .pcd { font-size: 22px; white-space: nowrap; }
+    .prow .pkill { padding: 11px 11px; font-size: 15px; }
+    .prow .pdel { padding: 11px 9px; font-size: 14px; }
+  }
+  /* 窄寬度:改成手機版兩段式(上排頻道與倒數,下排按鈕) */
+  @container patrol (max-width: 460px) {
+    .prow {
+      grid-template-columns: 1fr auto;
+      grid-template-areas:
+        "nm    cd"
+        "where cd"
+        "kill  del";
+      gap: 6px 10px;
+      padding: 12px;
+    }
+    .prow .pnm { grid-area: nm; font-size: 20px; }
+    .prow .pwhere { grid-area: where; font-size: 13px; }
+    .prow .pcd { grid-area: cd; align-self: center; text-align: right; white-space: nowrap; font-size: 26px; }
+    .prow .pkill { grid-area: kill; width: 100%; margin-top: 4px; padding: 14px 10px; font-size: 17px; }
+    .prow .pdel { grid-area: del; margin-top: 4px; padding: 14px 13px; font-size: 15px; white-space: nowrap; }
+  }
+  /* 極窄:再壓縮一級,並藏掉次要資訊 */
+  @container patrol (max-width: 300px) {
+    .prow { gap: 4px 8px; padding: 9px; }
+    .prow .pnm { font-size: 17px; }
+    .prow .pwhere { font-size: 12px; }
+    .prow .pcd { font-size: 20px; }
+    .prow .pkill { padding: 12px 8px; font-size: 15px; }
+    .prow .pdel { padding: 12px 10px; font-size: 14px; }
+    .pgroup { padding: 6px; }
+    .pghead { gap: 6px; }
+    .pghead .pgname { font-size: 12px; }
+    .pghead .pgtally { display: none; }
+    .pghead .pgsprite { width: 20px; height: 20px; }
+  }
 
   /* message board */
   .boardwrap { flex: 1; min-height: 0; }
@@ -1044,7 +1088,7 @@ async function togglePip() {
     catch (e) { openFloat(); return; }
     copyStylesTo(pipWin);
     const layout = pipWin.document.createElement("style");
-    layout.textContent = "html,body{height:100%;margin:0;}body{background:#000;padding:10px;display:flex;flex-direction:column;font-family:'Noto Sans TC',sans-serif;color:#fdf3df;}.patrolDetach{flex:1;min-height:0;display:flex;flex-direction:column;}.patrol{flex:1;min-height:0;overflow-y:auto;}";
+    layout.textContent = "html,body{height:100%;margin:0;}body{background:#000;padding:10px;display:flex;flex-direction:column;font-family:'Noto Sans TC',sans-serif;color:#fdf3df;overflow-x:hidden;}.patrolDetach{flex:1;min-height:0;display:flex;flex-direction:column;container-type:inline-size;container-name:patrol;}.patrol{flex:1;min-height:0;overflow-y:auto;}";
     pipWin.document.head.appendChild(layout);
     const title = pipWin.document.createElement("div");
     title.style.cssText = "font-weight:900;color:#ffce54;margin-bottom:8px;";
