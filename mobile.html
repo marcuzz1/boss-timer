@@ -165,7 +165,6 @@
 <div class="mtop">
   <div class="crest">🍄</div>
   <div class="ttl">巡王計時器</div>
-  <div class="clock pix" id="clock">--:--:--</div>
   <button class="sbtn" id="soundBtn" type="button" aria-label="音效開關">🔊</button>
   <a class="sbtn" href="index.html?pc=1" aria-label="電腦版" style="text-decoration:none;">🖥</a>
   <div class="conn" id="conn" aria-label="連線狀態"></div>
@@ -581,7 +580,6 @@ function renderBoard(list){
 
 function tick(){
   const now=serverNow();
-  $("clock").textContent=fmtClock(now);
   updateEstimate(); checkAlarms(now); checkRoundReminder(now);
   renderHero(now); renderGrid(); renderPatrol(now); renderRecords(now);
 }

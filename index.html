@@ -340,7 +340,6 @@
     <div class="crest">🍄</div>
     <div class="title">巡王計時器<small>打倒王就記一筆,大家一起盯著牠重生</small></div>
     <div class="grow"></div>
-    <div class="mast-clock pix" id="clock">--:--:--</div>
     <input class="mast-field" id="nick" type="text" maxlength="16" placeholder="你的暱稱" aria-label="你的暱稱">
     <button class="btn-toggle" id="soundBtn" type="button">🔊 音效</button>
     <a href="mobile.html" style="text-decoration:none;color:var(--cream);font-weight:700;font-size:13px;background:var(--panel2);border:2px solid var(--edge);border-radius:6px;padding:8px 12px;box-shadow:inset 0 2px 0 rgba(255,255,255,.10), 0 3px 0 var(--edge);">📱 手機版</a>
@@ -928,7 +927,6 @@ function renderRecords(now) {
 
 function tick() {
   const now = serverNow();
-  $("clock").textContent = fmtClock(now);
   updateEstimate();
   checkAlarms(now);
   checkRoundReminder(now);
