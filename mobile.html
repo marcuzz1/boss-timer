@@ -330,6 +330,8 @@ function showLogin(msg){
   `);
 }
 const VERIFY_TTL=24*60*60*1000;   // 每 24 小時重新驗證身分組
+const CLIENT_VER=2;               // 前端版本:要強制重新載入時 +1,並把 DB 的 bossTimer/config/minClientVer 設成同一個數字
+const REQUIRED_NAME_VER=1;        // 需要的名稱規則版本,與 functions 的 NAME_VERSION 一致
 const verifiedFresh=()=>{ const t=Number(localStorage.getItem("bt_verified_at")||0); return t && (Date.now()-t)<VERIFY_TTL; };
 let needReverify=false;
 // 名稱一律取自 Discord（指定伺服器的暱稱）,不讓使用者修改
@@ -342,14 +344,47 @@ function applyLockedNick(name){
   const k=document.getElementById("killerInput");
   if(k){ k.value=n; k.classList.remove("need"); }
 }
-async function applyNickFromToken(user){
-  try{ const r=await user.getIdTokenResult(); if(r&&r.claims&&r.claims.name) applyLockedNick(r.claims.name); }
-  catch(e){ console.warn("讀取名稱失敗:",e); }
+// 舊憑證沒有名稱（或規則版本過舊）→ 自動重新驗證一次
+async function ensureNameClaim(user){
+  let claims={};
+  try{ claims=(await user.getIdTokenResult()).claims||{}; }catch(e){ console.warn("讀取憑證失敗:",e); }
+  if(claims.name && Number(claims.nameVer||0)>=REQUIRED_NAME_VER){ applyLockedNick(claims.name); return true; }
+  localStorage.removeItem("bt_nick");
+  localStorage.removeItem("bt_verified_at");
+  lockedNick="";
+  try{ await signOut(auth); }catch(e){}
+  if(sessionStorage.getItem("bt_reauth_done")){
+    showLogin("名稱規則已更新,請重新用 Discord 登入一次,名稱會自動套用你的伺服器暱稱。");
+  }else{
+    sessionStorage.setItem("bt_reauth_done","1");   // 一個 session 只自動跳一次,避免無限迴圈
+    gateShow('<div style="font-size:16px;">名稱規則已更新,正在重新驗證…</div>');
+    location.href=discordLoginUrl();
+  }
+  return false;
+}
+// 遠端強制重新載入
+function hardReload(){
+  const u=new URL(location.href);
+  u.searchParams.set("v",String(Date.now()));
+  location.replace(u.toString());
+}
+function forceReload(){
+  if(sessionStorage.getItem("bt_reloaded")){
+    gateShow('<div style="font-size:40px;margin-bottom:10px;">🔄</div><div style="font-size:19px;font-weight:900;margin-bottom:8px;">有新版本</div><div style="color:#b6a6e2;font-size:14px;line-height:1.7;margin-bottom:18px;">請手動重新載入頁面取得最新版。</div><button id="reloadNow" type="button" style="background:#5865F2;color:#fff;border:none;font-weight:800;padding:13px 24px;border-radius:9px;font-size:15px;">重新載入</button>');
+    const b=document.getElementById("reloadNow"); if(b) b.addEventListener("click",hardReload);
+    return;
+  }
+  sessionStorage.setItem("bt_reloaded","1");
+  gateShow('<div style="font-size:16px;">有新版本,正在重新載入…</div>');
+  setTimeout(hardReload,1200);
 }
 const _authCode=new URLSearchParams(location.search).get("code");
 gateShow('<div style="font-size:16px;">載入中…</div>');
-onAuthStateChanged(auth, user => {
-  if(user && verifiedFresh()){ applyNickFromToken(user); startDataListeners(); gateHide(); return; }
+onAuthStateChanged(auth, async user => {
+  if(user && verifiedFresh()){
+    if(!(await ensureNameClaim(user))) return;
+    startDataListeners(); gateHide(); return;
+  }
   if(user && !verifiedFresh() && !_authCode){ needReverify=true; signOut(auth); return; }
   if(!user && !_authCode) showLogin(needReverify ? "已超過 24 小時,請重新用 Discord 驗證身分組。" : undefined);
 });
@@ -732,6 +767,11 @@ function startDataListeners(){
   if(_dataListenersStarted) return;
   _dataListenersStarted=true;
   onValue(killsRef,s=>{ kills=s.val()||{}; const now=serverNow(); renderHero(now); renderGrid(); renderPatrol(now); renderRecords(now); });
+  // 遠端版本閘門:minClientVer 大於本地 CLIENT_VER 就強制重新載入
+  onValue(ref(db,"bossTimer/config"),s=>{
+    const cfg=s.val()||{};
+    if(Number(cfg.minClientVer||0)>CLIENT_VER) forceReload();
+  }, err=>console.warn("config read failed:",err));
   onValue(historyRef,s=>{ histLog=s.val()||{}; renderHistory(); },
     err=>{ console.error("history read failed:",err); const b=$("historyList"); if(b) b.innerHTML='<div class="empty" style="color:var(--ember)">歷史紀錄讀取失敗,請確認 Firebase 規則已開放 bossTimer/history。</div>'; });
   onValue(boardRef,s=>{
