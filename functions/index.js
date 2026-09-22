@@ -13,7 +13,6 @@ const GUILD_ID = "1544259636813897758";        // 權限檢查用的伺服器
 const NICK_GUILD_ID = "306086932910178307";    // 顯示名稱取自這個伺服器的暱稱
 const ROLE_ID = "1544261463403790487";
 const NAME_MAX = 16;                           // 與前端欄位長度一致
-const NAME_VERSION = 1;                        // 名稱規則版本:改規則時 +1,前端會要求重新驗證
 const REDIRECT_URI = "https://marcuzz1.github.io/boss-timer/";
 
 exports.discordAuth = onCall(
@@ -79,8 +78,8 @@ exports.discordAuth = onCall(
     }
     const name = String(nickName || fallbackName).slice(0, NAME_MAX);
 
-    // 5) 發 Firebase 自訂登入憑證:member 給資料庫規則用,name/nameVer 讓前端拿到不可篡改的顯示名稱
-    const customToken = await admin.auth().createCustomToken(uid, { member: true, name, nameVer: NAME_VERSION });
-    return { token: customToken, name, nameVer: NAME_VERSION };
+    // 5) 發 Firebase 自訂登入憑證:member 給資料庫規則用,name 讓前端拿到不可篡改的顯示名稱
+    const customToken = await admin.auth().createCustomToken(uid, { member: true, name });
+    return { token: customToken, name };
   }
 );
