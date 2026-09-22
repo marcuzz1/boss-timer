@@ -140,6 +140,10 @@
   .tag.window{background:rgba(176,107,255,.2);color:var(--violet);} .tag.overdue{background:rgba(255,111,97,.2);color:var(--ember);}
   .rec .del{flex:0 0 auto;background:#3a1c28;color:var(--ember);border:2px solid var(--edge);border-radius:8px;padding:8px 10px;font-size:12px;font-weight:700;white-space:nowrap;}
 
+  /* 名稱由 Discord 決定,不能改 */
+  .fld input.locked,input.locked{color:var(--gold);background:#17141f;cursor:default;}
+  .fld input.locked:focus,input.locked:focus{border-color:var(--edge);outline:none;}
+
   /* 紀錄頁籤（目前紀錄 / 歷史紀錄） */
   .rtabs{display:flex;gap:6px;margin:0 2px 10px;}
   .rtab{flex:1;background:var(--night2);color:var(--grape);border:2px solid var(--edge);border-radius:9px;padding:9px 6px;font-size:13px;font-weight:700;}
@@ -224,7 +228,7 @@
     </div>
 
     <div class="fld"><label for="chInput">頻道 CH（1~60）</label><input id="chInput" type="number" inputmode="numeric" min="1" max="60" placeholder="輸入頻道"></div>
-    <div class="fld"><label for="killerInput">你的 ID（必填）</label><input id="killerInput" type="text" maxlength="16" placeholder="輸入你的 ID"></div>
+    <div class="fld"><label for="killerInput">你的 ID（取自 Discord,不可修改）</label><input id="killerInput" class="locked" type="text" maxlength="16" placeholder="Discord 暱稱" readonly title="名稱固定取用你在指定 Discord 伺服器的暱稱,無法修改"></div>
     <button class="big-go" id="recordBtn" type="button">⚔ 記錄擊殺</button>
     <button class="big-go" id="delChBtn" type="button" style="background:#3a1c28;color:var(--ember);margin-top:10px;">🗑 刪除此頻道紀錄</button>
     <button class="big-go" id="delBossBtn" type="button" style="background:#3a1c28;color:var(--ember);margin-top:10px;">🧹 清除此王全部頻道紀錄</button>
@@ -328,10 +332,24 @@ function showLogin(msg){
 const VERIFY_TTL=24*60*60*1000;   // 每 24 小時重新驗證身分組
 const verifiedFresh=()=>{ const t=Number(localStorage.getItem("bt_verified_at")||0); return t && (Date.now()-t)<VERIFY_TTL; };
 let needReverify=false;
+// 名稱一律取自 Discord（指定伺服器的暱稱）,不讓使用者修改
+let lockedNick="";
+function applyLockedNick(name){
+  const n=String(name||"").trim().slice(0,16);
+  if(!n) return;
+  lockedNick=n;
+  localStorage.setItem("bt_nick",n);
+  const k=document.getElementById("killerInput");
+  if(k){ k.value=n; k.classList.remove("need"); }
+}
+async function applyNickFromToken(user){
+  try{ const r=await user.getIdTokenResult(); if(r&&r.claims&&r.claims.name) applyLockedNick(r.claims.name); }
+  catch(e){ console.warn("讀取名稱失敗:",e); }
+}
 const _authCode=new URLSearchParams(location.search).get("code");
 gateShow('<div style="font-size:16px;">載入中…</div>');
 onAuthStateChanged(auth, user => {
-  if(user && verifiedFresh()){ startDataListeners(); gateHide(); return; }
+  if(user && verifiedFresh()){ applyNickFromToken(user); startDataListeners(); gateHide(); return; }
   if(user && !verifiedFresh() && !_authCode){ needReverify=true; signOut(auth); return; }
   if(!user && !_authCode) showLogin(needReverify ? "已超過 24 小時,請重新用 Discord 驗證身分組。" : undefined);
 });
@@ -341,10 +359,7 @@ if(_authCode){
     .then(res => {
       localStorage.setItem("bt_verified_at", String(Date.now()));
       needReverify=false;
-      if(res.data.name){
-        if(!localStorage.getItem("bt_nick")) localStorage.setItem("bt_nick", res.data.name);
-        const k=document.getElementById("killerInput"); if(k && !k.value) k.value=res.data.name;
-      }
+      applyLockedNick(res.data.name);
       return signInWithCustomToken(auth, res.data.token);
     })
     .then(()=>{ history.replaceState(null,"",location.pathname); startDataListeners(); gateHide(); })
@@ -486,11 +501,14 @@ async function recordKill(bossKey,ch){
   logHistory({action:"kill",boss:bossKey,bossName:b.name,ch,killer,killTime,prev});
 }
 function requireNick(){
-  const el=$("killerInput");
-  const v=el.value.trim()||(localStorage.getItem("bt_nick")||"").trim();
-  if(!v){ el.classList.add("need"); el.placeholder="請先輸入你的 ID！"; el.focus(); return null; }
-  el.classList.remove("need");
-  const nick=v.slice(0,16); localStorage.setItem("bt_nick",nick); return nick;
+  if(!lockedNick){
+    const el=$("killerInput");
+    if(el){ el.classList.add("need"); el.placeholder="請重新登入取得暱稱"; }
+    alert("還沒取得你的 Discord 暱稱,請重新用 Discord 登入一次。");
+    return null;
+  }
+  const el=$("killerInput"); if(el) el.classList.remove("need");
+  return lockedNick;
 }
 async function deleteKill(id){
   const prev=kills[id];
@@ -530,7 +548,7 @@ async function applyOverride(bossKey,chRaw){
     if(killTime>serverNow()) killTime-=24*60*60*1000;
   }
   const existing=kills[killId(bossKey,ch)];
-  const killer=((existing&&existing.killer)||localStorage.getItem("bt_nick")||"匿名").slice(0,16);
+  const killer=((existing&&existing.killer)||lockedNick||"匿名").slice(0,16);
   try{ await set(ref(db,`${KILLS_PATH}/${killId(bossKey,ch)}`),{boss:bossKey,bossName:b.name,ch,killer,killTime}); }
   catch(err){ console.error(err); alert("套用失敗,請確認 Firebase 規則。"); return; }
   logHistory({action:"edit",boss:bossKey,bossName:b.name,ch,killer,killTime,prev:existing});
@@ -538,11 +556,7 @@ async function applyOverride(bossKey,chRaw){
 
 /* 歷史紀錄:每次變動留一筆,只保留最新 HISTORY_MAX 筆,最新的在最上面 */
 const HIST_LABEL={kill:"擊殺",add:"擊殺",edit:"校正",del:"刪除",restore:"復原"};
-const currentNick=()=>{
-  const el=$("killerInput");
-  const v=((el&&el.value.trim())||localStorage.getItem("bt_nick")||"").trim();
-  return v?v.slice(0,16):"匿名";
-};
+const currentNick=()=>lockedNick||"匿名";
 async function logHistory({action,boss,bossName,ch,killer,killTime,prev}){
   const entry={
     action, boss, bossName: bossName||(bossByKey[boss]&&bossByKey[boss].name)||boss,
@@ -775,9 +789,8 @@ document.querySelectorAll(".tab").forEach(tab=>{
 window.addEventListener("pointerdown",ensureAudio,{once:true});
 
 /* init */
-const savedNick=localStorage.getItem("bt_nick");
-if(savedNick){ $("killerInput").value=savedNick; }
-$("killerInput").addEventListener("input",()=>{ if($("killerInput").value.trim()) $("killerInput").classList.remove("need"); });
+// 先用上次登入拿到的名稱填上,登入完成後會用 token claim 覆寫成最新的 Discord 暱稱
+applyLockedNick(localStorage.getItem("bt_nick"));
 $("soundBtn").textContent=soundOn?"🔊":"🔇"; $("soundBtn").classList.toggle("off",!soundOn);
 buildPicker(); buildGrid(); buildPatrolChips(); buildRecFilter(); setCurrentBoss(currentBoss);
 tick(); setInterval(tick,1000);

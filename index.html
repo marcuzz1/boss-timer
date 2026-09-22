@@ -81,6 +81,9 @@
   .mast-field:focus-visible { border-color: var(--gold); }
   .mast-field.need { border-color: var(--ember); box-shadow: 0 0 0 3px rgba(255,111,97,.35); }
   .mast-field.need::placeholder { color: var(--ember); }
+  /* 名稱由 Discord 決定,不能改 */
+  input.locked, .form input.locked { color: var(--gold); background: #17141f; cursor: default; }
+  input.locked:focus, .form input.locked:focus { border-color: var(--edge); outline: none; }
   .conn { font-size: 12px; font-weight: 700; color: var(--gold); white-space: nowrap; }
   .conn.on { color: var(--leaf); }
 
@@ -422,7 +425,7 @@
     <div class="crest">🍄</div>
     <div class="title">巡王計時器<small>打倒王就記一筆,大家一起盯著牠重生</small></div>
     <div class="grow"></div>
-    <input class="mast-field" id="nick" type="text" maxlength="16" placeholder="你的暱稱" aria-label="你的暱稱">
+    <input class="mast-field locked" id="nick" type="text" maxlength="16" placeholder="Discord 暱稱" aria-label="你的暱稱（取自 Discord,不可修改）" readonly title="名稱固定取用你在指定 Discord 伺服器的暱稱,無法修改">
     <button class="btn-toggle" id="soundBtn" type="button">🔊 音效</button>
     <a href="mobile.html" style="text-decoration:none;color:var(--cream);font-weight:700;font-size:13px;background:var(--panel2);border:2px solid var(--edge);border-radius:6px;padding:8px 12px;box-shadow:inset 0 2px 0 rgba(255,255,255,.10), 0 3px 0 var(--edge);">📱 手機版</a>
     <button class="btn-danger" id="clearAllBtn" type="button">全部清除</button>
@@ -456,7 +459,7 @@
         <div class="form">
           <div><label for="bossSelect">選擇 BOSS</label><select id="bossSelect"></select></div>
           <div><label for="chInput">頻道 CH</label><input id="chInput" type="number" min="1" max="60" placeholder="1~60"></div>
-          <div><label for="killerInput">擊殺者</label><input id="killerInput" type="text" maxlength="16" placeholder="預設用暱稱"></div>
+          <div><label for="killerInput">記錄者</label><input id="killerInput" class="locked" type="text" maxlength="16" placeholder="Discord 暱稱" readonly title="記錄者固定是你的 Discord 暱稱,無法修改"></div>
           <button class="btn-go" id="recordBtn" type="button">記錄擊殺</button>
         </div>
         <button class="btn-danger" id="delChBtn" type="button" style="width:100%;margin-top:8px;">🗑 刪除此頻道紀錄（用上面選的 BOSS + 頻道）</button>
@@ -603,10 +606,29 @@ function showLogin(msg) {
 const VERIFY_TTL = 24 * 60 * 60 * 1000;   // 每 24 小時重新驗證身分組
 const verifiedFresh = () => { const t = Number(localStorage.getItem("bt_verified_at") || 0); return t && (Date.now() - t) < VERIFY_TTL; };
 let needReverify = false;
+// 名稱一律取自 Discord（指定伺服器的暱稱）,前端只顯示不讓改
+let lockedNick = "";
+function applyLockedNick(name) {
+  const n = String(name || "").trim().slice(0, 16);
+  if (!n) return;
+  lockedNick = n;
+  localStorage.setItem("bt_nick", n);
+  ["nick", "killerInput"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.value = n; el.classList.remove("need"); }
+  });
+}
+// 登入狀態還在（重新整理）時,從 ID token 的 claim 取回名稱,不依賴 localStorage
+async function applyNickFromToken(user) {
+  try {
+    const r = await user.getIdTokenResult();
+    if (r && r.claims && r.claims.name) applyLockedNick(r.claims.name);
+  } catch (e) { console.warn("讀取名稱失敗:", e); }
+}
 const _authCode = new URLSearchParams(location.search).get("code");
 gateShow('<div style="font-size:16px;">載入中…</div>');
 onAuthStateChanged(auth, user => {
-  if (user && verifiedFresh()) { startDataListeners(); gateHide(); return; }
+  if (user && verifiedFresh()) { applyNickFromToken(user); startDataListeners(); gateHide(); return; }
   if (user && !verifiedFresh() && !_authCode) { needReverify = true; signOut(auth); return; }
   if (!user && !_authCode) showLogin(needReverify ? "已超過 24 小時,請重新用 Discord 驗證身分組。" : undefined);
 });
@@ -616,10 +638,7 @@ if (_authCode) {
     .then(res => {
       localStorage.setItem("bt_verified_at", String(Date.now()));
       needReverify = false;
-      if (res.data.name) {
-        if (!localStorage.getItem("bt_nick")) localStorage.setItem("bt_nick", res.data.name);
-        const ne = document.getElementById("nick"); if (ne && !ne.value) ne.value = res.data.name;
-      }
+      applyLockedNick(res.data.name);
       return signInWithCustomToken(auth, res.data.token);
     })
     .then(() => { history.replaceState(null, "", location.pathname); startDataListeners(); gateHide(); })
@@ -850,18 +869,17 @@ function updateEstimate() {
 }
 
 /* ---------- firebase writes ---------- */
-// 暱稱必填：沒填就紅框提示並聚焦,回傳 null
+// 名稱來自 Discord,拿不到就要求重新登入
 function requireNick() {
-  const el = $("nick");
-  const v = el.value.trim();
-  if (!v) {
-    el.classList.add("need"); el.placeholder = "請先輸入暱稱！"; el.focus();
-    // 從子母畫面/浮動視窗操作時看不到主視窗的紅框,補一個提示
-    if (pipWin || floatWins.size) alert("請先回主視窗填「你的暱稱」,才能記錄擊殺。");
+  if (!lockedNick) {
+    const el = $("nick");
+    if (el) { el.classList.add("need"); el.placeholder = "請重新登入取得暱稱"; }
+    alert("還沒取得你的 Discord 暱稱,請重新用 Discord 登入一次。");
     return null;
   }
-  el.classList.remove("need");
-  return v.slice(0, 16);
+  const el = $("nick");
+  if (el) el.classList.remove("need");
+  return lockedNick;
 }
 async function recordKill(bossKey, ch) {
   ch = Number(ch);
@@ -869,7 +887,7 @@ async function recordKill(bossKey, ch) {
   const nick = requireNick();
   if (!nick) return;
   const b = bossByKey[bossKey];
-  const killer = ($("killerInput").value.trim() || nick).slice(0, 16);
+  const killer = nick;   // 記錄者固定是登入者的 Discord 暱稱
   const prev = kills[killId(bossKey, ch)];
   const killTime = serverNow();
   try { await set(ref(db, `${KILLS_PATH}/${killId(bossKey, ch)}`), { boss: bossKey, bossName: b.name, ch, killer, killTime }); selectedCh = null; }
@@ -936,11 +954,7 @@ async function applyOverride(bossKey, chRaw, nick) {
 
 /* ---------- 歷史紀錄:每次變動留一筆,只保留最新 HISTORY_MAX 筆 ---------- */
 const HIST_LABEL = { kill: "擊殺", add: "擊殺", edit: "校正", del: "刪除", restore: "復原" };
-const currentNick = () => {
-  const el = $("nick");
-  const v = ((el && el.value.trim()) || localStorage.getItem("bt_nick") || "").trim();
-  return v ? v.slice(0, 16) : "匿名";
-};
+const currentNick = () => lockedNick || "匿名";
 async function logHistory({ action, boss, bossName, ch, killer, killTime, prev }) {
   const entry = {
     action, boss, bossName: bossName || (bossByKey[boss] && bossByKey[boss].name) || boss,
@@ -1412,9 +1426,8 @@ $("ovMode").addEventListener("change", syncOvMode);
 syncOvMode();
 $("ovBtn").addEventListener("click", () => { const nk = requireNick(); if (!nk) return; applyOverride(currentBoss, $("chInput").value, nk); });
 $("chInput").addEventListener("keydown", e => { if (e.key === "Enter") recordKill(currentBoss, $("chInput").value); });
+// 名稱由 Discord 決定,這裡不再接受手動修改
 const nickEl = $("nick");
-nickEl.addEventListener("change", () => localStorage.setItem("bt_nick", nickEl.value.trim()));
-nickEl.addEventListener("input", () => { if (nickEl.value.trim()) nickEl.classList.remove("need"); });
 
 const soundBtn = $("soundBtn");
 function refreshSoundBtn() { soundBtn.textContent = soundOn ? "🔊 音效" : "🔇 靜音"; soundBtn.classList.toggle("off", !soundOn); }
@@ -1426,8 +1439,8 @@ window.addEventListener("pointerdown", ensureAudio, { once: true });
 window.addEventListener("keydown", ensureAudio, { once: true });
 
 /* ---------- init ---------- */
-const savedNick = localStorage.getItem("bt_nick");
-if (savedNick) { nickEl.value = savedNick; }
+// 先用上次登入拿到的名稱填上,登入完成後會再用 token claim 覆寫成最新的 Discord 暱稱
+applyLockedNick(localStorage.getItem("bt_nick"));
 refreshSoundBtn();
 buildPicker();
 buildGrid();
