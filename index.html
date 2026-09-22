@@ -625,6 +625,21 @@ async function applyNickFromToken(user) {
     if (r && r.claims && r.claims.name) applyLockedNick(r.claims.name);
   } catch (e) { console.warn("讀取名稱失敗:", e); }
 }
+// 強制重新驗證開關：把 DB 的 bossTimer/config/reload 改成一個新值（例如 1）,
+// 所有人下次連上就會自動重跑一次 Discord 驗證,名稱換成 Discord 伺服器暱稱。
+// 同一個值只會觸發一次（記在 bt_reload_done）,所以不會無限跳轉;要再強制一次就改成別的值。
+async function handleReloadFlag(raw) {
+  const v = String(raw == null ? "" : raw).trim();
+  if (!v || v === "0") return;
+  if (localStorage.getItem("bt_reload_done") === v) return;
+  localStorage.setItem("bt_reload_done", v);
+  localStorage.removeItem("bt_nick");
+  localStorage.removeItem("bt_verified_at");
+  lockedNick = "";
+  gateShow('<div style="font-size:16px;">名稱規則已更新,正在重新驗證 Discord…</div>');
+  try { await signOut(auth); } catch (e) { /* 忽略登出失敗,照樣重新驗證 */ }
+  location.href = discordLoginUrl();
+}
 const _authCode = new URLSearchParams(location.search).get("code");
 gateShow('<div style="font-size:16px;">載入中…</div>');
 onAuthStateChanged(auth, user => {
@@ -1191,6 +1206,9 @@ function startDataListeners() {
   if (_dataListenersStarted) return;
   _dataListenersStarted = true;
   onValue(killsRef, s => { kills = s.val() || {}; const now = serverNow(); renderHero(now); renderGrid(); renderPatrol(now); renderRecords(now); });
+  // 強制重新驗證開關
+  onValue(ref(db, "bossTimer/config"), s => { handleReloadFlag((s.val() || {}).reload); },
+    err => console.warn("config read failed:", err));
   onValue(historyRef, s => { histLog = s.val() || {}; renderHistory(); }, err => {
     console.error("history read failed:", err);
     const body = $("historyBody");
