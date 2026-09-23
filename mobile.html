@@ -576,7 +576,7 @@ async function logHistory({action,boss,bossName,ch,killer,killTime,prev}){
   const entry={
     action, boss, bossName: bossName||(bossByKey[boss]&&bossByKey[boss].name)||boss,
     ch:Number(ch), killer:(killer||"匿名").slice(0,16), killTime:killTime||0,
-    by:currentNick(), at:serverNow(),
+    by:currentNick().slice(0,16), at:serverNow(),
   };
   if(prev&&prev.killTime){ entry.prevKiller=(prev.killer||"匿名").slice(0,16); entry.prevKillTime=prev.killTime; }
   try{ const r=await push(historyRef,entry); await trimHistory(r&&r.key,entry); }

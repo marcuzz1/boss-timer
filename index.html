@@ -271,6 +271,8 @@
   .undo { background: #1d3324; color: var(--leaf); border: 1px solid var(--edge); border-radius: 5px; padding: 4px 8px; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap; }
   .undo:hover { background: #24422e; }
   td.hprev { color: var(--grape); }
+  /* 名字欄位一律截斷,不讓長名字把表格撐寬（目前紀錄/歷史紀錄共用） */
+  .nmtxt { display: inline-block; max-width: 108px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
 
   /* patrol grouped by boss */
   .pgroup { display: flex; flex-direction: column; gap: 6px; background: var(--panel2); border: 2px solid var(--edge); border-radius: 9px; padding: 8px; }
@@ -747,6 +749,13 @@ function remainText(item, now) {
 function escapeHtml(t) {
   return String(t).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
 }
+/* 名字太長就截斷（超過 NAME_MAX 字補「…」,滑上去看完整名字）,避免把表格撐寬跑版 */
+const NAME_MAX = 10;
+function nameCell(raw, max = NAME_MAX) {
+  const full = String(raw || "匿名");
+  const cut = full.length > max ? full.slice(0, max) + "…" : full;
+  return `<span class="nmtxt" title="${escapeHtml(full)}">${escapeHtml(cut)}</span>`;
+}
 function portrait(b, cls, px) {
   return b.img
     ? `<img class="${cls}" src="${b.img}" alt="${escapeHtml(b.name)}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'emoji',textContent:'${b.emoji}'}))">`
@@ -981,7 +990,7 @@ async function logHistory({ action, boss, bossName, ch, killer, killTime, prev }
   const entry = {
     action, boss, bossName: bossName || (bossByKey[boss] && bossByKey[boss].name) || boss,
     ch: Number(ch), killer: (killer || "匿名").slice(0, 16), killTime: killTime || 0,
-    by: currentNick(), at: serverNow(),
+    by: currentNick().slice(0, 16), at: serverNow(),
   };
   if (prev && prev.killTime) { entry.prevKiller = (prev.killer || "匿名").slice(0, 16); entry.prevKillTime = prev.killTime; }
   try {
@@ -1150,7 +1159,7 @@ function renderRecords(now) {
     return `<tr>
       <td>${escapeHtml(b.name)}</td>
       <td class="pix">${r.ch}</td>
-      <td>${escapeHtml(r.killer || "匿名")}</td>
+      <td>${nameCell(r.killer || "匿名")}</td>
       <td class="pix">${fmtHM(r.killTime)}</td>
       <td><span class="tag ${r.st}">${STATE_LABEL[r.st]}</span></td>
       <td class="pix">${remainText(r, now)}</td>
@@ -1180,11 +1189,11 @@ function renderHistory() {
     return `<tr>
       <td class="pix">${fmtHM(h.at || 0)}</td>
       <td><span class="hact ${h.action}">${act}</span></td>
-      <td>${escapeHtml(h.bossName || "")}</td>
+      <td>${nameCell(h.bossName || "")}</td>
       <td class="pix">${h.ch}</td>
-      <td>${escapeHtml(h.killer || "匿名")}</td>
+      <td>${nameCell(h.killer || "匿名")}</td>
       <td class="pix">${timeCell}</td>
-      <td>${escapeHtml(h.by || "匿名")}</td>
+      <td>${nameCell(h.by || "匿名")}</td>
       <td><button class="undo" data-undo="${h.id}" title="把這筆紀錄寫回去">↩ 復原</button></td>
     </tr>`;
   }).join("");
