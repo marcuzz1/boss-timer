@@ -571,6 +571,14 @@ async function applyOverride(bossKey,chRaw){
 
 /* 歷史紀錄:每次變動留一筆,每個王只保留最新 HISTORY_MAX_PER_BOSS 筆,最新的在最上面 */
 const HIST_LABEL={kill:"擊殺",add:"擊殺",edit:"校正",del:"刪除",restore:"復原"};
+/* 只有「校正時間 → 套用」才算校正;舊版把「已有紀錄時再記一次擊殺」也寫成 edit,
+   靠 at ≈ killTime（3 秒內）判回擊殺 */
+const KILL_EPS=3000;
+function actionOf(h){
+  if(!h||h.action!=="edit") return h&&h.action;
+  const gap=(h.at||0)-(h.killTime||0);
+  return (h.at&&h.killTime&&gap>=0&&gap<KILL_EPS) ? "kill" : "edit";
+}
 const currentNick=()=>lockedNick||"匿名";
 async function logHistory({action,boss,bossName,ch,killer,killTime,prev}){
   const entry={
@@ -719,12 +727,13 @@ function renderHistory(){
   const box=$("historyList"); if(!box) return;
   if(!rows.length){ box.innerHTML=`<div class="empty">這個篩選沒有歷史紀錄。<br>之後新增、校正、刪除都會留在這裡（每個王最多 ${HISTORY_MAX_PER_BOSS} 筆）。</div>`; return; }
   box.innerHTML=rows.map(h=>{
-    const act=HIST_LABEL[h.action]||h.action;
+    const action=actionOf(h);
+    const act=HIST_LABEL[action]||action;
     const timeText=h.prevKillTime
       ? `<span class="prevt">${fmtHM(h.prevKillTime)}</span> → ${fmtHM(h.killTime)}`
       : fmtHM(h.killTime);
     return `<div class="hrow">
-      <div class="top"><span class="hact ${h.action}">${act}</span><span class="nm">${escapeHtml(h.bossName||"")} · CH${h.ch}</span><span class="when">${fmtHM(h.at||0)}</span></div>
+      <div class="top"><span class="hact ${action}">${act}</span><span class="nm">${escapeHtml(h.bossName||"")} · CH${h.ch}</span><span class="when">${fmtHM(h.at||0)}</span></div>
       <div class="sub">${escapeHtml(h.killer||"匿名")} ｜ 擊殺時間 ${timeText}</div>
       <div class="sub">操作者 ${escapeHtml(h.by||"匿名")}</div>
       <button class="undo" data-undo="${h.id}">↩ 復原這筆</button>

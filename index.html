@@ -1005,6 +1005,16 @@ async function applyOverride(bossKey, chRaw, nick) {
 
 /* ---------- 歷史紀錄:每次變動留一筆,每個王只保留最新 HISTORY_MAX_PER_BOSS 筆 ---------- */
 const HIST_LABEL = { kill: "擊殺", add: "擊殺", edit: "校正", del: "刪除", restore: "復原" };
+/* 只有「🕓 校正時間 → 套用」才算校正。
+   舊版本把「頻道已經有紀錄、再按一次記錄擊殺」也寫成 edit,這些其實是擊殺。
+   判別方式:當下按擊殺時 killTime 就是寫入的那一刻,所以 at ≈ killTime;
+   校正一定是指定過去/偏移的時間,at 會跟 killTime 差很多。 */
+const KILL_EPS = 3000;
+function actionOf(h) {
+  if (!h || h.action !== "edit") return h && h.action;
+  const gap = (h.at || 0) - (h.killTime || 0);
+  return (h.at && h.killTime && gap >= 0 && gap < KILL_EPS) ? "kill" : "edit";
+}
 const currentNick = () => lockedNick || "匿名";
 async function logHistory({ action, boss, bossName, ch, killer, killTime, prev }) {
   const entry = {
@@ -1202,13 +1212,14 @@ function renderHistory() {
     return;
   }
   body.innerHTML = rows.map(h => {
-    const act = HIST_LABEL[h.action] || h.action;
+    const action = actionOf(h);
+    const act = HIST_LABEL[action] || action;
     const timeCell = h.prevKillTime
       ? `<span class="hprev">${fmtHM(h.prevKillTime)}</span> → ${fmtHM(h.killTime)}`
       : fmtHM(h.killTime);
     return `<tr>
       <td class="pix">${fmtHM(h.at || 0)}</td>
-      <td><span class="hact ${h.action}">${act}</span></td>
+      <td><span class="hact ${action}">${act}</span></td>
       <td>${nameCell(h.bossName || "")}</td>
       <td class="pix">${h.ch}</td>
       <td>${nameCell(h.killer || "匿名")}</td>
