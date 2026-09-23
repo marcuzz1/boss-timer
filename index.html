@@ -268,11 +268,27 @@
   @media (max-width: 1100px), (max-height: 860px) {
     #recNowWrap, #recHistWrap { max-height: 46vh; }
   }
-  .undo { background: #1d3324; color: var(--leaf); border: 1px solid var(--edge); border-radius: 5px; padding: 4px 8px; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .undo { background: #1d3324; color: var(--leaf); border: 1px solid var(--edge); border-radius: 5px; padding: 4px 6px; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap; }
   .undo:hover { background: #24422e; }
-  td.hprev { color: var(--grape); }
+  .hprev { color: var(--grape); }
   /* 名字欄位一律截斷,不讓長名字把表格撐寬（目前紀錄/歷史紀錄共用） */
   .nmtxt { display: inline-block; max-width: 108px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+
+  /* 歷史紀錄:固定欄寬 + 100% 寬度,整張表格最大寬度就是面板寬（跟目前紀錄一樣,不會被撐破） */
+  #recHistWrap { overflow-x: hidden; }
+  #recHistWrap table { table-layout: fixed; width: 100%; }
+  #recHistWrap th, #recHistWrap td { padding: 6px 5px; overflow: hidden; text-overflow: ellipsis; }
+  #recHistWrap .nmtxt { max-width: 100%; }        /* 欄寬固定,名字跟著欄位縮 */
+  #recHistWrap td.htime { white-space: normal; }  /* 「舊時間 → 新時間」擠不下就換行,不要被切掉 */
+  #recHistWrap .undo { width: 100%; padding: 4px 2px; font-size: 13px; line-height: 1; }
+  .hcol-at { width: 12%; }
+  .hcol-act { width: 12%; }
+  .hcol-boss { width: 15%; }
+  .hcol-ch { width: 8%; }
+  .hcol-killer { width: 15%; }
+  .hcol-time { width: 17%; }
+  .hcol-by { width: 13%; }
+  .hcol-undo { width: 8%; }
 
   /* patrol grouped by boss */
   .pgroup { display: flex; flex-direction: column; gap: 6px; background: var(--panel2); border: 2px solid var(--edge); border-radius: 9px; padding: 8px; }
@@ -535,6 +551,10 @@
         </div>
         <div class="tablewrap" id="recHistWrap" style="display:none;">
           <table>
+            <colgroup>
+              <col class="hcol-at"><col class="hcol-act"><col class="hcol-boss"><col class="hcol-ch">
+              <col class="hcol-killer"><col class="hcol-time"><col class="hcol-by"><col class="hcol-undo">
+            </colgroup>
             <thead><tr><th>操作</th><th>動作</th><th>BOSS</th><th>CH</th><th>擊殺者</th><th>擊殺時間</th><th>操作者</th><th></th></tr></thead>
             <tbody id="historyBody">
               <tr><td colspan="8" class="empty">還沒有歷史紀錄。之後新增、校正、刪除都會留在這裡（每個王最多 50 筆）。</td></tr>
@@ -1192,9 +1212,9 @@ function renderHistory() {
       <td>${nameCell(h.bossName || "")}</td>
       <td class="pix">${h.ch}</td>
       <td>${nameCell(h.killer || "匿名")}</td>
-      <td class="pix">${timeCell}</td>
+      <td class="pix htime">${timeCell}</td>
       <td>${nameCell(h.by || "匿名")}</td>
-      <td><button class="undo" data-undo="${h.id}" title="把這筆紀錄寫回去">↩ 復原</button></td>
+      <td><button class="undo" data-undo="${h.id}" aria-label="復原這筆紀錄" title="把這筆紀錄寫回去">↩</button></td>
     </tr>`;
   }).join("");
   body.querySelectorAll("[data-undo]").forEach(btn =>
