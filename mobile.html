@@ -66,8 +66,8 @@
   /* views */
   main{padding:12px 12px calc(var(--tabh) + env(safe-area-inset-bottom) + 16px);}
   .view{display:none;} .view.active{display:block;}
-  .h2{font-size:15px;font-weight:900;margin:2px 2px 10px;display:flex;align-items:baseline;gap:8px;}
-  .h2 .tally{font-size:12px;color:var(--grape);font-weight:700;}
+  .h2{font-size:15px;font-weight:900;margin:2px 2px 10px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;min-width:0;}
+  .h2 .tally{font-size:12px;color:var(--grape);font-weight:700;white-space:nowrap;}
   .recFilter{color-scheme:dark;background:var(--night2);color:var(--cream);border:2px solid var(--edge);border-radius:8px;padding:6px 8px;font-family:inherit;font-size:13px;font-weight:700;outline:none;}
   .recFilter:focus{border-color:var(--gold);}
 
@@ -262,7 +262,7 @@
       <button class="rtab" data-rtab="hist" type="button">歷史紀錄</button>
     </div>
     <div id="recordList"><div class="empty">還沒有紀錄。到「頻道」記一筆吧。</div></div>
-    <div id="historyList" style="display:none;"><div class="empty">還沒有歷史紀錄。<br>之後新增、校正、刪除都會留在這裡（每個 BOSS 最新 50 筆）。</div></div>
+    <div id="historyList" style="display:none;"><div class="empty">還沒有歷史紀錄。<br>之後新增、校正、刪除都會留在這裡（每個王最多 50 筆）。</div></div>
   </section>
 
   <!-- 留言 -->
@@ -396,8 +396,7 @@ const BOSSES = [
 ];
 const bossByKey = Object.fromEntries(BOSSES.map(b => [b.key, b]));
 const CHANNELS = 60, SOON_MS = 5*60*1000, KILLS_PATH = "bossTimer/kills", MIN = 60*1000;
-const HISTORY_PATH = "bossTimer/history", HISTORY_MAX_PER_BOSS = 50;   // 每個 BOSS 只保留最新 50 筆
-const HISTORY_MAX = HISTORY_MAX_PER_BOSS * BOSSES.length;              // 全部紀錄上限 = BOSS 數 × 50
+const HISTORY_PATH = "bossTimer/history", HISTORY_MAX_PER_BOSS = 50;   // 每個王只保留最新 50 筆（全部上限 = 王數 × 50）
 
 const killsRef = ref(db, KILLS_PATH);
 const historyRef = ref(db, HISTORY_PATH);
@@ -570,7 +569,7 @@ async function applyOverride(bossKey,chRaw){
   logHistory({action:"edit",boss:bossKey,bossName:b.name,ch,killer,killTime,prev:existing});
 }
 
-/* 歷史紀錄:每次變動留一筆,只保留最新 HISTORY_MAX 筆,最新的在最上面 */
+/* 歷史紀錄:每次變動留一筆,每個王只保留最新 HISTORY_MAX_PER_BOSS 筆,最新的在最上面 */
 const HIST_LABEL={kill:"擊殺",add:"擊殺",edit:"校正",del:"刪除",restore:"復原"};
 const currentNick=()=>lockedNick||"匿名";
 async function logHistory({action,boss,bossName,ch,killer,killTime,prev}){
@@ -714,9 +713,11 @@ function renderRecords(now){
 function renderHistory(){
   let rows=historyRows();
   if(recFilter!=="all") rows=rows.filter(h=>h.boss===recFilter);
-  if(recTab==="hist") $("recordCount").textContent=`${rows.length} / ${recFilter==="all"?HISTORY_MAX:HISTORY_MAX_PER_BOSS} 筆`;
+  if(recTab==="hist") $("recordCount").textContent = recFilter==="all"
+    ? `${rows.length} 筆`
+    : `${rows.length} / ${HISTORY_MAX_PER_BOSS} 筆`;
   const box=$("historyList"); if(!box) return;
-  if(!rows.length){ box.innerHTML=`<div class="empty">這個篩選沒有歷史紀錄。<br>之後新增、校正、刪除都會留在這裡（每個 BOSS 最新 ${HISTORY_MAX_PER_BOSS} 筆）。</div>`; return; }
+  if(!rows.length){ box.innerHTML=`<div class="empty">這個篩選沒有歷史紀錄。<br>之後新增、校正、刪除都會留在這裡（每個王最多 ${HISTORY_MAX_PER_BOSS} 筆）。</div>`; return; }
   box.innerHTML=rows.map(h=>{
     const act=HIST_LABEL[h.action]||h.action;
     const timeText=h.prevKillTime
