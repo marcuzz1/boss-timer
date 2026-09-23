@@ -262,7 +262,7 @@
       <button class="rtab" data-rtab="hist" type="button">歷史紀錄</button>
     </div>
     <div id="recordList"><div class="empty">還沒有紀錄。到「頻道」記一筆吧。</div></div>
-    <div id="historyList" style="display:none;"><div class="empty">還沒有歷史紀錄。<br>之後新增、校正、刪除都會留在這裡（最新 50 筆）。</div></div>
+    <div id="historyList" style="display:none;"><div class="empty">還沒有歷史紀錄。<br>之後新增、校正、刪除都會留在這裡（每個 BOSS 最新 50 筆）。</div></div>
   </section>
 
   <!-- 留言 -->
@@ -396,7 +396,8 @@ const BOSSES = [
 ];
 const bossByKey = Object.fromEntries(BOSSES.map(b => [b.key, b]));
 const CHANNELS = 60, SOON_MS = 5*60*1000, KILLS_PATH = "bossTimer/kills", MIN = 60*1000;
-const HISTORY_PATH = "bossTimer/history", HISTORY_MAX = 50;   // 只保留最新 50 筆
+const HISTORY_PATH = "bossTimer/history", HISTORY_MAX_PER_BOSS = 50;   // 每個 BOSS 只保留最新 50 筆
+const HISTORY_MAX = HISTORY_MAX_PER_BOSS * BOSSES.length;              // 全部紀錄上限 = BOSS 數 × 50
 
 const killsRef = ref(db, KILLS_PATH);
 const historyRef = ref(db, HISTORY_PATH);
@@ -579,21 +580,35 @@ async function logHistory({action,boss,bossName,ch,killer,killTime,prev}){
     by:currentNick(), at:serverNow(),
   };
   if(prev&&prev.killTime){ entry.prevKiller=(prev.killer||"匿名").slice(0,16); entry.prevKillTime=prev.killTime; }
-  try{ const r=await push(historyRef,entry); await trimHistory(r&&r.key); }
+  try{ const r=await push(historyRef,entry); await trimHistory(r&&r.key,entry); }
   catch(err){ console.error("寫入歷史紀錄失敗:",err); }
 }
-async function trimHistory(newKey){
-  const keys=[...new Set([...Object.keys(histLog),...(newKey?[newKey]:[])])].sort();
-  if(keys.length<=HISTORY_MAX) return;
-  const extra=keys.slice(0,keys.length-HISTORY_MAX);
+// 以 BOSS 分組,各留最新 HISTORY_MAX_PER_BOSS 筆（push key 本身就是時間序）
+async function trimHistory(newKey,newEntry){
+  const all={...histLog};
+  if(newKey) all[newKey]=newEntry||all[newKey];
+  const byBoss={};
+  for(const [k,h] of Object.entries(all)){
+    const bk=(h&&h.boss)||"__unknown";
+    (byBoss[bk]||(byBoss[bk]=[])).push(k);
+  }
+  const extra=[];
+  for(const keys of Object.values(byBoss)){
+    keys.sort();
+    if(keys.length>HISTORY_MAX_PER_BOSS) extra.push(...keys.slice(0,keys.length-HISTORY_MAX_PER_BOSS));
+  }
+  if(!extra.length) return;
   try{ await Promise.all(extra.map(k=>remove(ref(db,`${HISTORY_PATH}/${k}`)))); }
   catch(err){ console.error("清理舊歷史紀錄失敗:",err); }
 }
-const historyRows=()=>Object.entries(histLog)
-  .filter(([,h])=>h&&h.boss&&bossByKey[h.boss])
-  .map(([id,h])=>({id,...h}))
-  .sort((a,b)=>(b.at||0)-(a.at||0))
-  .slice(0,HISTORY_MAX);
+const historyRows=()=>{
+  const seen={};
+  return Object.entries(histLog)
+    .filter(([,h])=>h&&h.boss&&bossByKey[h.boss])
+    .map(([id,h])=>({id,...h}))
+    .sort((a,b)=>(b.at||0)-(a.at||0))
+    .filter(h=>(seen[h.boss]=(seen[h.boss]||0)+1)<=HISTORY_MAX_PER_BOSS);
+};
 const restoreTarget=h=>h.prevKillTime
   ? {killer:h.prevKiller||h.killer,killTime:h.prevKillTime}
   : {killer:h.killer,killTime:h.killTime};
@@ -699,9 +714,9 @@ function renderRecords(now){
 function renderHistory(){
   let rows=historyRows();
   if(recFilter!=="all") rows=rows.filter(h=>h.boss===recFilter);
-  if(recTab==="hist") $("recordCount").textContent=`${rows.length} / ${HISTORY_MAX} 筆`;
+  if(recTab==="hist") $("recordCount").textContent=`${rows.length} / ${recFilter==="all"?HISTORY_MAX:HISTORY_MAX_PER_BOSS} 筆`;
   const box=$("historyList"); if(!box) return;
-  if(!rows.length){ box.innerHTML='<div class="empty">這個篩選沒有歷史紀錄。<br>之後新增、校正、刪除都會留在這裡（最新 50 筆）。</div>'; return; }
+  if(!rows.length){ box.innerHTML=`<div class="empty">這個篩選沒有歷史紀錄。<br>之後新增、校正、刪除都會留在這裡（每個 BOSS 最新 ${HISTORY_MAX_PER_BOSS} 筆）。</div>`; return; }
   box.innerHTML=rows.map(h=>{
     const act=HIST_LABEL[h.action]||h.action;
     const timeText=h.prevKillTime
