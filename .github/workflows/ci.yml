@@ -1,0 +1,48 @@
+name: CI
+
+# 只做檢查，不部署。
+#
+# 部署走另一條路：GitHub Pages 的設定是「Deploy from a branch：main /(root)」，
+# 改這個設定需要 repo 的 Settings 權限，所以站台檔案直接 commit 在 main 的根目錄
+# （用 frontend/ 的 npm run build:pages 產生）。
+#
+# 這個 workflow 只確認測試與建置沒壞，只要讀取權限，不用動 repo 的任何設定。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "frontend/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Test
+        working-directory: frontend
+        run: npm test
+
+      # build 本身已經包含 tsc --noEmit，型別有錯就會停在這裡
+      - name: Build
+        working-directory: frontend
+        run: npm run build

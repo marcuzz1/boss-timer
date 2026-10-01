@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>巡王計時器</title>
+<script>
+  /* 畫面太小自動切換到手機版；加 ?pc=1 可強制留在電腦版 */
+  (function () {
+    try {
+      if (window.innerWidth < 820 && !/[?&]pc=1/.test(location.search)) {
+        location.replace("mobile.html" + location.search + location.hash);
+      }
+    } catch (e) {}
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+<div id="root"></div>
+<script type="module" src="/src/entry-desktop.tsx"></script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+{
+  "name": "boss-timer-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "巡王計時器前端（React + Vite，桌機版與手機版兩個入口）",
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build": "tsc --noEmit && vite build",
+    "build:pages": "node scripts/build-pages.mjs",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "firebase": "12.3.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/react": "^16.1.0",
+    "@types/node": "22.9.0",
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "@vitejs/plugin-react": "4.3.4",
+    "jsdom": "^25.0.1",
+    "typescript": "5.6.3",
+    "vite": "5.4.11",
+    "vitest": "^2.1.8"
+  }
+}
