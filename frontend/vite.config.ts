@@ -10,8 +10,8 @@ import { resolve } from "node:path";
  * base 預設 /boss-timer/，對應 GitHub Pages 的 repo 子路徑。
  * 部署到其他網域時用 VITE_BASE 覆寫，例如 VITE_BASE=/ npm run build。
  *
- * 建置結果一律先產在 frontend/dist/。部署用的 npm run build:pages 會再把 dist/
- * 的內容複製到 repo 根目錄（GitHub Pages 設定成從 main 分支根目錄服務）。
+ * 建置結果產在 frontend/dist/，由 .github/workflows/deploy-pages.yml 上傳到
+ * GitHub Pages，不進版控。
  */
 export default defineConfig(() => ({
   base: process.env.VITE_BASE ?? "/boss-timer/",

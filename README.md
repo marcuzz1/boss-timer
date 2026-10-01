@@ -27,14 +27,8 @@ frontend/              React + Vite + TypeScript，建置後是純靜態檔案
 backend/
   functions/           Firebase Cloud Functions：Discord 身分組驗證
 
-index.html             ← 以下是建置產物，由 npm run build:pages 產生，不要手改
-mobile.html
-assets/
-three_gun.mp3
-.nojekyll
-
 firebase.json          functions 的部署設定（指向 backend/functions）
-.github/workflows/     推上 main 跑測試與建置（只做檢查，不部署）
+.github/workflows/     推上 main 就自動建置並部署到 GitHub Pages
 ```
 
 桌機版與手機版是兩個獨立的畫面，但共用 `config` / `lib` / `data` / `hooks`。
@@ -77,7 +71,6 @@ npm test           # 單元測試 + 畫面煙霧測試
 npm run typecheck  # 只跑型別檢查
 npm run build      # 型別檢查 + 產出 dist/
 npm run preview    # 預覽 dist/
-npm run build:pages  # 部署用：建置並複製到 repo 根目錄（見下面「部署」）
 ```
 
 `src/config/firebase.ts` 裡的設定是 Firebase 的公開 web 設定，本來就會打包進前端，
@@ -88,44 +81,25 @@ npm run build:pages  # 部署用：建置並複製到 repo 根目錄（見下面
 
 ### 前端 → GitHub Pages
 
-GitHub Pages 設定是 **Deploy from a branch：`main` /(root)**，所以站台檔案直接放在
-repo 根目錄、跟著 commit 進去。要部署就跑：
+GitHub Pages 的 **Settings → Pages → Source** 設定成 **GitHub Actions**，所以建置產物
+不進版控，推上 `main` 就自動部署：
+
+```
+.github/workflows/deploy-pages.yml
+  push main → 測試 → 建置 → 部署
+  開 PR     → 只測試與建置，不部署
+```
+
+要改畫面就改 `frontend/src/`，commit 推上 `main` 即可，不用在本機先建置。
+想在本機確認產出長什麼樣：
 
 ```bash
 cd frontend
-npm run build:pages
+npm run build && npm run preview
 ```
-
-這會跑型別檢查、建置，然後把結果複製到 repo 根目錄：
-
-```
-index.html      桌機版（建置產物）
-mobile.html     手機版（建置產物）
-assets/         JS / CSS（檔名帶 hash，每次重建會先清掉舊的）
-three_gun.mp3   從 frontend/public/ 複製過來
-.nojekyll       叫 GitHub Pages 不要跑 Jekyll
-```
-
-接著 commit 推上 `main`，網站就換新版了：
-
-```bash
-git add -A
-git commit -m "部署新版前端"
-git push
-```
-
-根目錄這些檔案都是產物，不要手改 —— 下次 `build:pages` 會整份覆蓋。要改畫面請改
-`frontend/src/`。忘記跑 `build:pages` 的症狀很明顯：推上去之後網站沒有變化。
-
-`.github/workflows/ci.yml` 會在推上 `main` 或開 PR 時跑測試與建置，只做檢查、不部署，
-所以只需要讀取權限，不用動 repo 的任何設定。
 
 網址前綴由 `frontend/vite.config.ts` 的 `base` 決定，預設 `/boss-timer/`（對應 repo 名稱）。
-換 repo 名稱或自訂網域時要改這裡。
-
-> 如果你有 repo 的 Settings 權限，可以把 **Settings → Pages → Source** 改成
-> **GitHub Actions**，就能改用 workflow 自動部署、不用再把產物 commit 進 repo。
-> 那種做法比較乾淨，但需要改設定。
+換 repo 名稱或自訂網域時要改這裡，或用 `VITE_BASE=/ npm run build` 覆寫。
 
 ### 後端 → Firebase Functions
 
