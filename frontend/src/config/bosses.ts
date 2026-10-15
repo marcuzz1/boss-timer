@@ -19,6 +19,7 @@ export const BOSSES: Boss[] = [
   { key: "treeking",  name: "樹妖王",     emoji: "🌳", img: IMG + "deo.png",               map: "東方岩石山 V",     respawnMin: 45,  respawnMax: 45  },
   { key: "rubyking",  name: "紅寶王",     emoji: "💎", img: IMG + "stumpy.png",            map: "海岸草叢III",      respawnMin: 45,  respawnMax: 45  },
   { key: "yeti",      name: "雪毛怪人",   emoji: "❄️", img: LOCAL_IMG("yati.png"),         map: "雪人之谷",         respawnMin: 45,  respawnMax: 45  },
+  { key: "blackman",  name: "黑鬼里芬",   emoji: "🧪", img: LOCAL_IMG("black_man.png"),    map: "天空庭院",         respawnMin: 45,  respawnMax: 45  },
   { key: "test",      name: "測試王",     emoji: "🧪", img: "",                            map: "測試用",           respawnMin: 10,  respawnMax: 10  },
 ];
 
